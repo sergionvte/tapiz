@@ -286,7 +286,7 @@ button:disabled { opacity: 0.6; cursor: progress; }
     ["anillos", "Anillos"], ["rombos", "Rombos"], ["placa", "Chapa"], ["cruces", "Cruces"],
     ["triangulos", "Triángulos"], ["escamas", "Escamas"], ["ondas", "Ondas"], ["chevron", "Zigzag"],
     ["rayas", "Rayas"], ["cuadricula", "Cuadrícula"], ["ladrillo", "Ladrillo"], ["fibra", "Fibra"],
-    ["confeti", "Confeti"],
+    ["hexagonos", "Hexágonos"], ["damero", "Damero"], ["lunares", "Lunares"], ["confeti", "Confeti"],
   ];
   const SWATCHES = [
     ["Marino", "#1c1b3c"], ["Medianoche", "#0e1530"], ["Índigo", "#2a2470"], ["Cobalto", "#123a7a"],
@@ -532,6 +532,20 @@ button:disabled { opacity: 0.6; cursor: progress; }
         }
         ctx.fill("nonzero"); ctx.globalAlpha = 1; break;
       }
+      case "hexagonos": {
+        const s = c * 1.1, R = s / Math.sqrt(3);
+        ctx.lineWidth = Math.max(0.6, r * 0.38); ctx.lineJoin = "round";
+        hex(s, (x, y) => {
+          for (let i = 0; i < 6; i++) {
+            const a = Math.PI / 6 + i * Math.PI / 3, px = x + R * Math.cos(a), py = y + R * Math.sin(a);
+            i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+          }
+          ctx.closePath();
+        });
+        ctx.stroke(); break;
+      }
+      case "damero": { const a = r * 0.95; diag((x, y) => ctx.rect(x - a, y - a, 2 * a, 2 * a)); ctx.fill(); break; }
+      case "lunares": { diag((x, y, alt) => circle(x, y, alt ? r * 0.5 : r * 1.25)); ctx.fill(); break; }
       case "confeti": { // deterministic scatter: one dot per cell, position/size from a hash
         const hash = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
         const s = c * 0.8;
@@ -616,9 +630,9 @@ button:disabled { opacity: 0.6; cursor: progress; }
   function drawThumbs() {
     const st = Object.assign({}, state, { grad: 0, bottomAuto: true });
     document.querySelectorAll(".pat canvas").forEach((cv) => {
-      // A 1080×1080 patch shown at ~3× so each pattern reads clearly.
-      const k = cv.width / 360;
-      render(cv, Object.assign({}, st, { pattern: cv.dataset.pattern }), { W: 1080, H: 1080, k, ox: 360, oy: 360, grainScale: 0.4 });
+      // A 1080×1080 patch zoomed in so each pattern reads clearly at thumbnail size.
+      const k = cv.width / 130;
+      render(cv, Object.assign({}, st, { pattern: cv.dataset.pattern }), { W: 1080, H: 1080, k, ox: 400, oy: 400, grainScale: 0.4 });
     });
   }
 
