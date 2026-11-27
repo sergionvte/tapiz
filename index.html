@@ -673,7 +673,7 @@ button:disabled { opacity: 0.6; cursor: progress; }
       ctx.fillStyle = css(cols[0]); ctx.fillRect(0, 0, W, H);
       if (st.shape === "escalones") {
         // Diagonal bands that climb to the right and drop at regular steps, with rounded corners.
-        const P = S * 15, s = 0.55, dStep = 0.4 * s * P, net = s - dStep / P, e = dStep * 0.08;
+        const P = S * 22, s = 0.55, dStep = 0.4 * s * P, net = s - dStep / P, e = dStep * 0.08;
         const bh = (H + net * W) * 1.08 / N, rr = Math.min(dStep * 0.3, bh * 0.25);
         const phase = -rng() * P;
         for (let i = 1; i < N; i++) {
