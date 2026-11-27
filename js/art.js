@@ -79,7 +79,7 @@ function renderArt(canvas, st, view) {
       for (let i = 0; i < nC; i++) {
         const hem = cols[Math.max(1, N - 2 - i)], top = cols[Math.max(1, N - 4 - i)];
         curt.push({ hem: lin(hem), top: lin(top), base: H * (0.4 + 0.16 * i + rng() * 0.05), amp: H * (0.08 + rng() * 0.04),
-          w: S * (2.2 + rng() * 1.2), gain: 1.5 - i * 0.5, shape: makeFbm(rng, 3), fade: makeFbm(rng, 2), rays: makeSimplex(rng), ph: rng() * 50 });
+          w: S * (2.2 + rng() * 1.2), gain: 1.5 - i * 0.5, shape: makeFbm(rng, 2), fade: makeFbm(rng, 2), rays: makeSimplex(rng), ph: rng() * 50 });
       }
       const lam = 1 / (S * 32), starCell = S * 1.2, seed = st.seed;
       pixels(ctx, canvas, view, (X, Y, out) => {
@@ -133,9 +133,8 @@ function renderArt(canvas, st, view) {
         const x = X * sc, y = Y * sc, h = height(x, y);
         const gx = (height(x + e, y) - h) / e, gy = (height(x, y + e) - h) / e;
         const light = Math.max(-1, Math.min(1, (gx * lx + gy * ly) * 0.3));
-        lut(clamp01(0.5 + 1.4 * h), out);
-        if (light > 0) { const m = light * 0.32; out[0] += (255 - out[0]) * m; out[1] += (255 - out[1]) * m; out[2] += (255 - out[2]) * m; }
-        else { const m = 1 + light * 0.22; out[0] *= m; out[1] *= m; out[2] *= m; }
+        // Light moves the colour along the palette itself, so sheen never turns grey.
+        lut(clamp01(0.5 + 1.4 * h + 0.28 * light), out);
       });
       break;
     }
