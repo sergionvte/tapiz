@@ -143,13 +143,14 @@
   function drawStyleCards() {
     const pal = state.palette;
     const looks = {
-      pattern: { style: "pattern" },
+      pattern: { style: "pattern", grad: 0 },
       material: { style: "material", shape: state.shape, palette: pal },
       abstract: { style: "abstract", abstract: state.abstract, palette: pal },
       gradient: { style: "gradient", gradient: state.gradient, palette: pal },
     };
     document.querySelectorAll("#styles canvas").forEach((cv) => {
-      render(cv, Object.assign({}, state, looks[cv.dataset.id]), { W: 1080, H: 1440, k: cv.width / 1080, grainScale: 0.4 });
+      const zoom = cv.dataset.id === "pattern" ? { k: cv.width / 150, ox: 400, oy: 400 } : { k: cv.width / 1080 };
+      render(cv, Object.assign({}, state, looks[cv.dataset.id]), Object.assign({ W: 1080, H: 1440, grainScale: 0.4 }, zoom));
     });
   }
 

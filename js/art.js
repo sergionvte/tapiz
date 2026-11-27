@@ -91,20 +91,21 @@ function renderArt(canvas, st, view) {
 
     case "aurora": {
       // Luminous curtains over a deep sky, added in linear light.
-      const sky = toLin(dark ? mix(cols[0], [0, 0, 0], 0.35) : cols[0]);
-      const skyTop = toLin(dark ? mix(cols[0], [0, 0, 0], 0.6) : mix(cols[0], [255, 255, 255], 0.3));
-      const nC = Math.min(4, N - 1), curt = [];
+      const sky = toLin(dark ? mix(cols[0], [0, 0, 0], 0.45) : cols[0]);
+      const skyTop = toLin(dark ? mix(cols[0], [0, 0, 0], 0.75) : mix(cols[0], [255, 255, 255], 0.3));
+      const nC = Math.min(3, N - 2), curt = [];
       for (let i = 0; i < nC; i++) {
-        curt.push({ col: toLin(cols[N - 1 - i]), base: H * (0.28 + 0.14 * i + rng() * 0.06), w: S * (5 + rng() * 5),
-          f: makeField(rng, S * 55, 2), g: makeField(rng, S * 9, 2), amp: H * (0.08 + rng() * 0.06), gain: 0.95 - i * 0.12 });
+        curt.push({ col: toLin(cols[Math.max(1, N - 2 - i)]), base: H * (0.4 + 0.12 * i + rng() * 0.06), w: S * (3.5 + rng() * 3),
+          f: makeField(rng, S * 60, 2), g: makeField(rng, S * 14, 2), amp: H * (0.1 + rng() * 0.06),
+          gain: (dark ? 0.6 : 0.35) - i * 0.1, fade: makeField(rng, S * 80, 1) });
       }
       pixels(ctx, canvas, view, (X, Y, out) => {
         const t = Y / H;
         let r = skyTop[0] + (sky[0] - skyTop[0]) * t, g = skyTop[1] + (sky[1] - skyTop[1]) * t, b = skyTop[2] + (sky[2] - skyTop[2]) * t;
         for (const c of curt) {
           const dy = Y - (c.base + c.f(X, 0) * c.amp);
-          let I = dy < 0 ? Math.exp(-(dy * dy) / (c.w * c.w * 16)) : Math.exp(-(dy * dy) / (c.w * c.w));
-          I *= c.gain * (0.65 + 0.35 * Math.sin(X / (S * 1.6) + c.g(X, 0) * 5));
+          let I = dy < 0 ? Math.exp(-(dy * dy) / (c.w * c.w * 10)) : Math.exp(-(dy * dy) / (c.w * c.w * 0.5));
+          I *= c.gain * (0.8 + 0.2 * Math.sin(X / (S * 2.2) + c.g(X, 0) * 4)) * clamp01(0.55 + 0.6 * c.fade(X, 0));
           r += c.col[0] * I; g += c.col[1] * I; b += c.col[2] * I;
         }
         out[0] = fromLin(r); out[1] = fromLin(g); out[2] = fromLin(b);
@@ -165,11 +166,11 @@ function renderArt(canvas, st, view) {
 
     case "liquido": {
       // Domain-warped flow, like marbled ink.
-      const fa = makeField(rng, S * 48, 4), fb = makeField(rng, S * 48, 4), fc = makeField(rng, S * 48, 4), A = S * 24;
+      const fa = makeField(rng, S * 75, 2), fb = makeField(rng, S * 75, 2), fc = makeField(rng, S * 60, 3), A = S * 30;
       pixels(ctx, canvas, view, (X, Y, out) => {
         const qx = fa(X, Y), qy = fb(X + S * 17, Y - S * 9);
         const v = fc(X + A * qx, Y + A * qy);
-        sample(0.5 + 0.42 * v + 0.12 * qx, out);
+        sample(0.5 + 0.36 * v + 0.1 * qx, out);
       });
       break;
     }
@@ -238,12 +239,12 @@ function renderArt(canvas, st, view) {
       const order = cols.slice().sort((a, b) => lum(a) - lum(b));
       const ground = dark ? order[0] : order[order.length - 1], inks = order.filter((c) => c !== ground);
       ctx.fillStyle = css(ground); ctx.fillRect(0, 0, W, H);
-      const g = S * 10;
+      const g = S * 8;
       ctx.lineCap = "round"; ctx.lineJoin = "round";
       for (let j = -1; j * g < H + g; j++) for (let i = -1; i * g < W + g; i++) {
         const r = mulberry32(st.seed * 31 + i * 7919 + j * 104729);
         if (r() < 0.12) continue;
-        const x = (i + 0.2 + r() * 0.6) * g, y = (j + 0.2 + r() * 0.6) * g, s = g * (0.22 + r() * 0.18);
+        const x = (i + 0.2 + r() * 0.6) * g, y = (j + 0.2 + r() * 0.6) * g, s = g * (0.3 + r() * 0.2);
         const c = css(inks[Math.floor(r() * inks.length)]), type = Math.floor(r() * 7);
         ctx.save(); ctx.translate(x, y); ctx.rotate(r() * Math.PI * 2);
         ctx.fillStyle = c; ctx.strokeStyle = c; ctx.lineWidth = s * 0.2; ctx.beginPath();
@@ -265,7 +266,7 @@ function renderArt(canvas, st, view) {
       ctx.fillStyle = css(cols[0]); ctx.fillRect(0, 0, W, H);
       const sp = S * 2.4, field = makeField(rng, S * 12, 3), stepX = Math.max(1, S * 0.5);
       const y0 = H * 0.1, rows = Math.ceil((H * 0.98 - y0) / sp);
-      ctx.lineWidth = Math.max(1 / k, S * 0.28); ctx.lineJoin = "round";
+      ctx.lineWidth = Math.max(1 / k, S * 0.38); ctx.lineJoin = "round";
       for (let row = 0; row < rows; row++) {
         const y = y0 + row * sp;
         ctx.beginPath(); ctx.moveTo(-10, y);
