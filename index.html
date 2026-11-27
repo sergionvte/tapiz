@@ -14,7 +14,7 @@
 <title>Tapiz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap">
-<link rel="stylesheet" href="styles.css?v=13">
+<link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 <div class="app">
@@ -125,11 +125,13 @@
         <fieldset class="group" data-tab="adjust">
           <legend>Ajustes</legend>
           <div class="slider"><label for="size">Escala</label><output for="size" id="sizeOut"></output><input type="range" id="size" min="8" max="80" step="0.1"></div>
+          <div class="row" id="menubarRow" hidden><span class="check"><input type="checkbox" id="menubar"><label for="menubar">Dejar sitio a la barra de menús</label></span><span class="hint" id="menubarHint"></span></div>
           <div class="slider" data-only="pattern"><label for="dotSize">Grosor del patrón</label><output for="dotSize" id="dotSizeOut"></output><input type="range" id="dotSize" min="10" max="80" step="1"></div>
           <div class="slider" data-only="pattern"><label for="contrast">Contraste</label><output for="contrast" id="contrastOut"></output><input type="range" id="contrast" min="10" max="100" step="1"></div>
           <div class="slider" data-only="pattern"><label for="grad">Degradado</label><output for="grad" id="gradOut"></output><input type="range" id="grad" min="0" max="100" step="1"></div>
           <div class="slider" data-only="material abstract gradient"><label for="layers">Colores</label><output for="layers" id="layersOut"></output><input type="range" id="layers" min="3" max="10" step="1"></div>
           <div class="slider"><label for="grain">Grano</label><output for="grain" id="grainOut"></output><input type="range" id="grain" min="0" max="100" step="1"></div>
+          <div class="slider" data-only="pattern"><label for="relief">Relieve</label><output for="relief" id="reliefOut"></output><input type="range" id="relief" min="0" max="100" step="1"></div>
           <div class="slider" data-only="pattern"><label for="soft">Desenfoque</label><output for="soft" id="softOut"></output><input type="range" id="soft" min="0" max="100" step="1"></div>
           <div class="row" data-only="material abstract gradient"><button type="button" class="ghost small" id="newShape">Nueva variación</button><span class="hint" id="seedOut"></span></div>
         </fieldset>
@@ -177,10 +179,10 @@
   </div>
 </div>
 
-<script src="js/data.js?v=13"></script>
-<script src="js/noise.js?v=13"></script>
-<script src="js/render.js?v=13"></script>
-<script src="js/art.js?v=15"></script>
-<script src="js/app.js?v=13"></script>
+<script src="js/data.js?v=16"></script>
+<script src="js/noise.js?v=16"></script>
+<script src="js/render.js?v=16"></script>
+<script src="js/art.js?v=16"></script>
+<script src="js/app.js?v=16"></script>
 </body>
 </html>

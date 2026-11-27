@@ -4,13 +4,13 @@
 
   // Everything that defines a design (shared by favourites and links).
   const DESIGN_KEYS = ["tiles", "style", "theme", "base", "bottomAuto", "bottom", "dotAuto", "dot", "pattern", "shape", "abstract",
-    "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft"];
+    "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft", "relief", "menubar"];
 
   // ---------- state ----------
   let state = Object.assign({
     preset: "auto", rotated: false, cw: 1320, ch: 2868, view: "full", tab: "design", mock: false,
     style: "pattern", shape: "bauhaus", abstract: "liquido", gradient: "malla",
-    palette: "costa", lastPalette: "costa", layers: 10, seed: 7, custom: DEFAULT_CUSTOM.slice(),
+    palette: "costa", lastPalette: "costa", layers: 10, seed: 7, custom: DEFAULT_CUSTOM.slice(), menubar: false,
   }, ORIGINAL);
   try {
     const saved = JSON.parse(localStorage.getItem("tapiz-state") || localStorage.getItem("perforado-state") || "null");
@@ -32,14 +32,31 @@
     if (!has(PALETTES, state.palette)) state.palette = "costa";
     if (!Array.isArray(state.custom) || state.custom.length < 2 || !state.custom.every((c) => /^#[0-9a-f]{6}$/i.test(c))) state.custom = DEFAULT_CUSTOM.slice();
     state.layers = Math.max(3, Math.min(10, +state.layers || 6));
+    state.relief = Math.max(0, Math.min(100, +state.relief || 0));
+    state.menubar = !!state.menubar;
   }
 
   // Grid-based Material designs choose a tile count instead of a free scale.
   const GRID_SHAPES = ["bauhaus", "bloques", "truchet", "dianas", "tejido", "colcha", "abanicos"];
   const isGrid = () => state.style === "material" && GRID_SHAPES.includes(state.shape);
   // Tile counts (across the short side) whose cells stay square to within tol on this screen.
+  // Menu bar height in wallpaper pixels for the current screen (landscape only).
+  function menuBarPx() {
+    const d = dims();
+    if (d.w <= d.h) return 0;
+    const p = PRESETS.find((x) => x.id === state.preset) || PRESETS[0];
+    if (p.menu) return p.menu;
+    if (p.id === "auto") {
+      const t = screen.availTop || 0; // macOS reports the menu bar here (in points)
+      if (t > 0 && t < 60) return Math.round(t * detected.dpr);
+      return Math.round(24 * detected.dpr);
+    }
+    return d.h >= 1600 ? 48 : 24;
+  }
+  const bandPx = () => state.menubar && isGrid() ? menuBarPx() : 0;
+  const renderState = () => Object.assign({}, state, { band: bandPx() });
   function tileOptions() {
-    const { w, h } = dims(), sh = Math.min(w, h), lo = Math.max(w, h);
+    const d = dims(), w = d.w, h = d.h - bandPx(), sh = Math.min(w, h), lo = Math.max(w, h);
     for (const tol of [0.012, 0.02, 0.03, 0.05]) {
       const opts = [];
       for (let n = 2; n <= 24; n++) {
@@ -104,6 +121,7 @@
     device.classList.toggle("is-wide", wide);
     device.classList.toggle("is-detail", state.view === "detail");
     device.style.setProperty("--mw", cssW + "px");
+    if (wide) device.style.setProperty("--mbh", (menuBarPx() * cssH / h).toFixed(2) + "px");
     if (!wide) {
       device.style.borderRadius = Math.round(cssW * 0.14) + "px";
       preview.style.borderRadius = Math.round(cssW * 0.12) + "px";
@@ -133,12 +151,14 @@
     $("lockDate").textContent = now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
   }
 
-  let pending = 0;
+  let pending = 0, thumbsDue = false;
   function draw(thumbs = true) {
     cancelAnimationFrame(pending);
+    thumbsDue = thumbsDue || thumbs; // a later draw(false) in the same frame must not drop thumbnails
     pending = requestAnimationFrame(() => {
+      thumbs = thumbsDue; thumbsDue = false;
       const { w, h } = fitPreview();
-      render(preview, state, previewView(w, h));
+      render(preview, renderState(), previewView(w, h));
       const d = dims();
       $("meta").textContent = `${d.w} × ${d.h} px · ${d.name}`;
       $("badge").hidden = state.view !== "detail";
@@ -280,7 +300,7 @@
 
   const sliders = {
     size: (v) => `${(+v).toFixed(1)} px`, dotSize: (v) => `${v}%`, contrast: (v) => `${v}%`, grad: (v) => `${v}%`,
-    layers: (v) => `${v}`, grain: (v) => `${v}%`, soft: (v) => (+v === 0 ? "nítido" : `${v}%`),
+    layers: (v) => `${v}`, grain: (v) => `${v}%`, soft: (v) => (+v === 0 ? "nítido" : `${v}%`), relief: (v) => (+v === 0 ? "plano" : `${v}%`),
   };
 
   function syncInputs() {
@@ -325,7 +345,10 @@
   }
 
   function syncScale() {
-    const el = $("size");
+    const el = $("size"), d = dims();
+    $("menubarRow").hidden = state.tab !== "adjust" || !isGrid() || d.w <= d.h;
+    $("menubar").checked = state.menubar;
+    $("menubarHint").textContent = state.menubar ? `Franja superior de ${menuBarPx()} px` : "";
     if (isGrid()) {
       const opts = tileOptions(), idx = snapTiles(opts);
       el.min = 0; el.max = opts.length - 1; el.step = 1; el.value = idx;
@@ -355,6 +378,7 @@
       syncInputs(); draw(false);
     });
     document.querySelectorAll('input[name="view"]').forEach((r) => r.addEventListener("change", (e) => { state.view = e.target.value; draw(false); }));
+    $("menubar").addEventListener("change", (e) => { state.menubar = e.target.checked; syncScale(); draw(false); });
     $("mock").addEventListener("change", (e) => { state.mock = e.target.checked; updateClock(); draw(false); });
     document.querySelectorAll('input[name="theme"]').forEach((r) => r.addEventListener("change", (e) => { state.theme = e.target.value; syncInputs(); draw(); }));
     $("base").addEventListener("input", (e) => { state.base = e.target.value; syncInputs(); draw(); });
@@ -426,6 +450,7 @@
       palette: pal, layers: Math.min(10, paletteLength(pal)), bottomAuto: true, dotAuto: true, tiles: 0,
       size: style === "pattern" ? Math.round(14 + Math.random() * 26) : Math.round(15 + Math.random() * 15),
       dotSize: Math.round(25 + Math.random() * 30), contrast: Math.round(60 + Math.random() * 40),
+      relief: Math.random() < 0.35 ? Math.round(40 + Math.random() * 50) : 0,
     });
     syncInputs(); draw();
   }
@@ -487,7 +512,7 @@
     await new Promise((r) => setTimeout(r, 40));
     try {
       const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
-      render(cv, state, { W: w, H: h });
+      render(cv, renderState(), { W: w, H: h });
       const blob = await new Promise((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/png"));
       const tag = state.style === "pattern" ? state.pattern : `${currentDesign()}-${state.palette}`;
       const filename = `tapiz-${tag}-${state.theme === "dark" ? "oscuro" : "claro"}-${w}x${h}.png`;

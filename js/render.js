@@ -52,29 +52,54 @@ function render(canvas, st, view) {
   const css = (c) => `rgb(${c.map((v) => v.toFixed(1)).join(",")})`;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = "none"; ctx.globalAlpha = 1;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ditheredPlate(ctx, canvas.width, canvas.height, pal, H, k, oy);
   ctx.setTransform(k, 0, 0, k, -ox * k, -oy * k);
-
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, css(pal.top));
-  grad.addColorStop(0.5, css(pal.mid));
-  grad.addColorStop(1, css(pal.bottom));
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
 
   const u = Math.min(W, H) / 1080;
   const c = st.size * u, r = c * st.dotSize / 200;
   const vis = { x0: Math.max(0, ox), y0: Math.max(0, oy),
                 x1: Math.min(W, ox + canvas.width / k), y1: Math.min(H, oy + canvas.height / k) };
+  const p = { W, H, c, r, vis };
   ctx.save();
   ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
-  ctx.fillStyle = css(pal.dot); ctx.strokeStyle = css(pal.dot);
   if (st.soft > 0 && "filter" in ctx) ctx.filter = `blur(${(st.soft / 100) * r * 0.9 * k}px)`;
-  drawPattern(ctx, st.pattern, { W, H, c, r, ox: (4.61 * u) % c, vis });
+  // Relief: an offset copy under the pattern, lighter for holes (a lit lower rim), darker for
+  // raised marks (a cast shadow), so the plate reads as pressed or embossed.
+  const rel = (st.relief || 0) / 100;
+  if (rel > 0) {
+    const lum = (q) => 0.2126 * q[0] + 0.7152 * q[1] + 0.0722 * q[2];
+    const hole = lum(pal.dot) < lum(pal.mid);
+    const d = Math.max(0.6, r * 0.42) * rel;
+    const rim = hole ? mix(pal.mid, [255, 255, 255], st.theme === "dark" ? 0.32 : 0.7) : mix(pal.mid, [0, 0, 0], 0.55);
+    ctx.save();
+    ctx.translate(d * 0.35, d); ctx.globalAlpha = Math.min(1, 0.35 + 0.55 * rel);
+    ctx.fillStyle = css(rim); ctx.strokeStyle = css(rim);
+    drawPattern(ctx, st.pattern, p);
+    ctx.restore();
+  }
+  ctx.fillStyle = css(pal.dot); ctx.strokeStyle = css(pal.dot);
+  drawPattern(ctx, st.pattern, p);
   ctx.restore();
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   addGrain(ctx, canvas.width, canvas.height, st.grain, view.grainScale ?? 1);
+}
+
+// The plate gradient is computed per pixel row and dithered, so dark gradients show no bands.
+function ditheredPlate(ctx, cw, ch, pal, H, k, oy) {
+  const img = ctx.createImageData(cw, ch), d = img.data, row = new Float32Array(3);
+  let s = 0x9e3779b9;
+  const rnd = () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; };
+  for (let y = 0; y < ch; y++) {
+    const t = Math.max(0, Math.min(1, (oy + (y + 0.5) / k) / H));
+    const a = t < 0.5 ? pal.top : pal.mid, b = t < 0.5 ? pal.mid : pal.bottom, f = t < 0.5 ? t * 2 : (t - 0.5) * 2;
+    row[0] = a[0] + (b[0] - a[0]) * f; row[1] = a[1] + (b[1] - a[1]) * f; row[2] = a[2] + (b[2] - a[2]) * f;
+    for (let x = 0, i = y * cw * 4; x < cw; x++, i += 4) {
+      const n = rnd() - rnd(); // triangular, ±1 LSB
+      d[i] = row[0] + n + 0.5; d[i + 1] = row[1] + n + 0.5; d[i + 2] = row[2] + n + 0.5; d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
 }
 
 // Iterate lattice positions covering the visible rect (plus one cell of margin).
@@ -83,27 +108,33 @@ function* lattice(vis, step, origin, m) {
   for (let y = s(vis.y0, origin.y); y < vis.y1 + step * (m || 1); y += step)
     for (let x = s(vis.x0, origin.x); x < vis.x1 + step * (m || 1); x += step) yield [x, y];
 }
+const hash2 = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
 function drawPattern(ctx, id, p) {
-  const { W, H, c, r, ox, vis } = p;
+  const { W, H, r, vis } = p;
   const TAU = Math.PI * 2;
+  // Every lattice step is stretched (by under half a step) to fit a whole number of times across
+  // the screen, and phased so the pattern is mirror-symmetric: equal margins at both edges.
+  const fit = (s) => W / Math.max(1, Math.round(W / s));
+  const ph = (s, alt) => { const v = (W / 2 - (alt ? s / 4 : s / 2)) % s; return v < 0 ? v + s : v; };
+  const c = fit(p.c);
   const circle = (x, y, rr) => { ctx.moveTo(x + rr, y); ctx.arc(x, y, rr, 0, TAU); };
-  const diag = (fn) => { for (const [x, y] of lattice(vis, c, { x: ox, y: 0 })) { fn(x, y, 0); fn(x + c / 2, y + c / 2, 1); } };
+  const diag = (fn) => { for (const [x, y] of lattice(vis, c, { x: ph(c, true), y: c / 4 })) { fn(x, y, 0); fn(x + c / 2, y + c / 2, 1); } };
   const hex = (s, fn) => { // hexagonal lattice with spacing s
-    const dy = s * Math.sqrt(3) / 2;
+    const dy = s * Math.sqrt(3) / 2, p0 = ph(s, true);
     const j0 = Math.floor(vis.y0 / dy) - 2;
     for (let j = j0; j * dy < vis.y1 + dy * 2; j++) {
-      const off = (j & 1) ? s / 2 : 0, y = j * dy;
-      for (let x = ox % s + off + Math.floor((vis.x0 - s * 2) / s) * s; x < vis.x1 + s * 2; x += s) fn(x, y, j);
+      const off = (j & 1) ? s / 2 : 0, y = j * dy + dy / 2;
+      for (let x = p0 + off + Math.floor((vis.x0 - s * 2 - p0) / s) * s; x < vis.x1 + s * 2; x += s) fn(x, y, j);
     }
   };
   ctx.beginPath();
   switch (id) {
-    case "rejilla": { const s = c / Math.SQRT2; for (const [x, y] of lattice(vis, s, { x: ox, y: s / 2 })) circle(x, y, r); ctx.fill(); break; }
-    case "panal": { hex(c / Math.pow(3, 0.25), (x, y) => circle(x, y, r)); ctx.fill(); break; }
+    case "rejilla": { const s = fit(c / Math.SQRT2); for (const [x, y] of lattice(vis, s, { x: ph(s), y: s / 2 })) circle(x, y, r); ctx.fill(); break; }
+    case "panal": { hex(fit(c / Math.pow(3, 0.25)), (x, y) => circle(x, y, r)); ctx.fill(); break; }
     case "semitono": {
-      const s = c / Math.SQRT2;
-      for (const [x, y] of lattice(vis, s, { x: ox, y: s / 2 })) {
+      const s = fit(c / Math.SQRT2);
+      for (const [x, y] of lattice(vis, s, { x: ph(s), y: s / 2 })) {
         const t = Math.max(0, Math.min(1, y / H));
         const rr = Math.min(s * 0.62, r * (0.15 + 1.75 * t * t));
         if (rr > 0.2) circle(x, y, rr);
@@ -129,7 +160,7 @@ function drawPattern(ctx, id, p) {
       ctx.fill("nonzero"); break;
     }
     case "triangulos": {
-      const s = c / Math.pow(3, 0.25), t = r * 1.55;
+      const s = fit(c / Math.pow(3, 0.25)), t = r * 1.55;
       hex(s, (x, y, j) => {
         const up = (j & 1) ? -1 : 1;
         ctx.moveTo(x, y - t * up); ctx.lineTo(x + t * 0.866, y + t * 0.5 * up); ctx.lineTo(x - t * 0.866, y + t * 0.5 * up); ctx.closePath();
@@ -137,34 +168,34 @@ function drawPattern(ctx, id, p) {
       ctx.fill(); break;
     }
     case "escamas": {
-      const s = c * 0.9, rr = s / 2;
+      const s = fit(c * 0.9), rr = s / 2, p0 = ph(s, true);
       ctx.lineWidth = Math.max(0.6, r * 0.38);
       const dy = s * 0.5;
       for (let j = Math.floor(vis.y0 / dy) - 2; j * dy < vis.y1 + s; j++) {
         const y = j * dy, off = (j & 1) ? rr : 0;
-        for (let x = ox % s + off + Math.floor((vis.x0 - s * 2) / s) * s; x < vis.x1 + s; x += s) {
+        for (let x = p0 + off + Math.floor((vis.x0 - s * 2 - p0) / s) * s; x < vis.x1 + s; x += s) {
           ctx.moveTo(x + rr, y); ctx.arc(x, y, rr, 0, Math.PI);
         }
       }
       ctx.stroke(); break;
     }
     case "ondas": {
-      const pY = c * 0.75, amp = c * 0.2, lam = c * 1.6;
+      const pY = c * 0.75, amp = c * 0.2, lam = fit(c * 1.6);
       ctx.lineWidth = Math.max(0.6, r * 0.7); ctx.lineJoin = "round";
-      const step = Math.max(1, c / 10);
-      for (let y = Math.floor(vis.y0 / pY) * pY - pY; y < vis.y1 + pY; y += pY) {
-        ctx.moveTo(vis.x0 - step, y + Math.sin((vis.x0 - step) / lam * TAU) * amp);
-        for (let x = vis.x0; x <= vis.x1 + step; x += step) ctx.lineTo(x, y + Math.sin(x / lam * TAU) * amp);
+      const step = Math.max(1, c / 10), wave = (x) => Math.cos((x - W / 2) / lam * TAU) * amp;
+      for (let y = Math.floor(vis.y0 / pY) * pY - pY + pY / 2; y < vis.y1 + pY; y += pY) {
+        ctx.moveTo(vis.x0 - step, y + wave(vis.x0 - step));
+        for (let x = vis.x0; x <= vis.x1 + step; x += step) ctx.lineTo(x, y + wave(x));
       }
       ctx.stroke(); break;
     }
     case "chevron": {
-      const pY = c * 0.7, w = c * 0.7, a = c * 0.3;
+      const pY = c * 0.7, w = fit(c * 0.7), a = c * 0.3;
       ctx.lineWidth = Math.max(0.6, r * 0.7); ctx.lineJoin = "miter";
-      const x0 = ox % w + Math.floor((vis.x0 - w * 2) / w) * w;
+      const x0 = (W / 2) % w + Math.floor((vis.x0 - w * 2) / w) * w;
       for (let y = Math.floor(vis.y0 / pY) * pY - pY; y < vis.y1 + pY; y += pY) {
-        ctx.moveTo(x0, y);
-        for (let x = x0, i = 0; x < vis.x1 + w; x += w / 2, i++) ctx.lineTo(x + w / 2, y + ((i & 1) ? 0 : a));
+        ctx.moveTo(x0, y + a);
+        for (let x = x0, i = 1; x < vis.x1 + w; x += w / 2, i++) ctx.lineTo(x + w / 2, y + ((i & 1) ? 0 : a));
       }
       ctx.stroke(); break;
     }
@@ -172,37 +203,37 @@ function drawPattern(ctx, id, p) {
       const pp = c / Math.SQRT2;
       ctx.lineWidth = r * 0.9;
       const k0 = Math.floor((vis.x0 - vis.y1) / pp) - 2, k1 = Math.ceil((vis.x1 - vis.y0) / pp) + 2;
-      for (let kk = k0; kk <= k1; kk++) { const x0 = kk * pp + (ox % pp); ctx.moveTo(x0 + vis.y0 - pp, vis.y0 - pp); ctx.lineTo(x0 + vis.y1 + pp, vis.y1 + pp); }
+      for (let kk = k0; kk <= k1; kk++) { const x0 = kk * pp + ph(pp); ctx.moveTo(x0 + vis.y0 - pp, vis.y0 - pp); ctx.lineTo(x0 + vis.y1 + pp, vis.y1 + pp); }
       ctx.stroke(); break;
     }
     case "cuadricula": {
-      const pp = c / Math.SQRT2, t = Math.max(0.8, r * 0.35);
-      for (let x = ox % pp + Math.floor((vis.x0 - pp) / pp) * pp; x < vis.x1 + pp; x += pp) ctx.rect(x - t / 2, vis.y0, t, vis.y1 - vis.y0);
+      const pp = fit(c / Math.SQRT2), t = Math.max(0.8, r * 0.35), p0 = ph(pp);
+      for (let x = p0 + Math.floor((vis.x0 - pp - p0) / pp) * pp; x < vis.x1 + pp; x += pp) ctx.rect(x - t / 2, vis.y0, t, vis.y1 - vis.y0);
       for (let y = pp / 2 + Math.floor((vis.y0 - pp) / pp) * pp; y < vis.y1 + pp; y += pp) ctx.rect(vis.x0, y - t / 2, vis.x1 - vis.x0, t);
       ctx.fill("nonzero"); break;
     }
     case "ladrillo": {
-      const bw = c * 1.4, bh = c * 0.7, t = Math.max(0.8, r * 0.38);
+      const bw = fit(c * 1.4), bh = c * 0.7, t = Math.max(0.8, r * 0.38), p0 = ph(bw, true);
       for (let j = Math.floor(vis.y0 / bh) - 1; j * bh < vis.y1 + bh; j++) {
         const y = j * bh;
         ctx.rect(vis.x0, y - t / 2, vis.x1 - vis.x0, t);
         const off = (j & 1) ? bw / 2 : 0;
-        for (let x = ox % bw + off + Math.floor((vis.x0 - bw * 2) / bw) * bw; x < vis.x1 + bw; x += bw) ctx.rect(x - t / 2, y, t, bh);
+        for (let x = p0 + off + Math.floor((vis.x0 - bw * 2 - p0) / bw) * bw; x < vis.x1 + bw; x += bw) ctx.rect(x - t / 2, y, t, bh);
       }
       ctx.fill("nonzero"); break;
     }
     case "fibra": {
-      const half = c / 2, t = half * Math.min(0.46, 0.12 + r / c), gap = (half - 2 * t) / 3;
-      ctx.globalAlpha = 0.85;
-      for (const [x, y] of lattice(vis, half, { x: ox % half, y: 0 })) {
-        const i = Math.round((x - ox % half) / half), j = Math.round(y / half);
+      const half = fit(c / 2), t = half * Math.min(0.46, 0.12 + r / c), gap = (half - 2 * t) / 3, ga = ctx.globalAlpha;
+      ctx.globalAlpha = ga * 0.85;
+      for (const [x, y] of lattice(vis, half, { x: 0, y: 0 })) {
+        const i = Math.round(x / half), j = Math.round(y / half);
         if ((i + j) & 1) { ctx.rect(x + 0.5, y + gap, half - 1, t); ctx.rect(x + 0.5, y + 2 * gap + t, half - 1, t); }
         else { ctx.rect(x + gap, y + 0.5, t, half - 1); ctx.rect(x + 2 * gap + t, y + 0.5, t, half - 1); }
       }
-      ctx.fill("nonzero"); ctx.globalAlpha = 1; break;
+      ctx.fill("nonzero"); ctx.globalAlpha = ga; break;
     }
     case "hexagonos": {
-      const s = c * 1.1, R = s / Math.sqrt(3);
+      const s = fit(c * 1.1), R = s / Math.sqrt(3);
       ctx.lineWidth = Math.max(0.6, r * 0.38); ctx.lineJoin = "round";
       hex(s, (x, y) => {
         for (let i = 0; i < 6; i++) {
@@ -216,12 +247,60 @@ function drawPattern(ctx, id, p) {
     case "damero": { const a = r * 0.95; diag((x, y) => ctx.rect(x - a, y - a, 2 * a, 2 * a)); ctx.fill(); break; }
     case "lunares": { diag((x, y, alt) => circle(x, y, alt ? r * 0.5 : r * 1.25)); ctx.fill(); break; }
     case "confeti": { // deterministic scatter: one dot per cell, position/size from a hash
-      const hash = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-      const s = c * 0.8;
+      const s = fit(c * 0.8);
       for (const [x, y] of lattice(vis, s, { x: 0, y: 0 })) {
         const i = Math.round(x / s), j = Math.round(y / s);
-        const h1 = hash(i, j), h2 = hash(j + 7919, i), h3 = hash(i + 104729, j + 31);
-        circle(x + h1 * s, y + h2 * s, r * (0.35 + 0.9 * h3));
+        circle(x + (0.15 + 0.7 * hash2(i, j)) * s, y + (0.15 + 0.7 * hash2(j + 7919, i)) * s, r * (0.35 + 0.9 * hash2(i + 104729, j + 31)));
+      }
+      ctx.fill(); break;
+    }
+    case "destellos": { // four-point sparkles, large and small alternating
+      const star = (x, y, a) => {
+        const q = a * 0.1;
+        ctx.moveTo(x, y - a);
+        ctx.quadraticCurveTo(x + q, y - q, x + a, y); ctx.quadraticCurveTo(x + q, y + q, x, y + a);
+        ctx.quadraticCurveTo(x - q, y + q, x - a, y); ctx.quadraticCurveTo(x - q, y - q, x, y - a); ctx.closePath();
+      };
+      const big = Math.min(r * 2.4, c * 0.34);
+      diag((x, y, alt) => star(x, y, alt ? big * 0.45 : big)); ctx.fill(); break;
+    }
+    case "laberinto": { // one diagonal per cell, chosen by a hash: a random maze
+      const s = fit(c * 0.75);
+      ctx.lineWidth = Math.max(0.6, r * 0.45); ctx.lineCap = "round";
+      for (const [x, y] of lattice(vis, s, { x: 0, y: 0 })) {
+        if (hash2(Math.round(x / s), Math.round(y / s)) < 0.5) { ctx.moveTo(x, y); ctx.lineTo(x + s, y + s); }
+        else { ctx.moveTo(x + s, y); ctx.lineTo(x, y + s); }
+      }
+      ctx.stroke(); ctx.lineCap = "butt"; break;
+    }
+    case "meandro": { // Truchet quarter arcs that join into continuous winding lines
+      const s = fit(c * 0.9), h = s / 2;
+      ctx.lineWidth = Math.max(0.6, r * 0.42);
+      for (const [x, y] of lattice(vis, s, { x: 0, y: 0 })) {
+        if (hash2(Math.round(x / s) + 31, Math.round(y / s) - 17) < 0.5) {
+          ctx.moveTo(x + h, y); ctx.arc(x, y, h, 0, Math.PI / 2);
+          ctx.moveTo(x + h, y + s); ctx.arc(x + s, y + s, h, Math.PI, Math.PI * 1.5);
+        } else {
+          ctx.moveTo(x + s, y + h); ctx.arc(x + s, y, h, Math.PI / 2, Math.PI);
+          ctx.moveTo(x, y + h); ctx.arc(x, y + s, h, -Math.PI / 2, 0);
+        }
+      }
+      ctx.stroke(); break;
+    }
+    case "terrazo": { // stone chips: irregular polygons scattered on a jittered lattice
+      const s = fit(c * 1.1);
+      for (const [x, y] of lattice(vis, s, { x: 0, y: 0 })) {
+        const i = Math.round(x / s), j = Math.round(y / s);
+        for (let m = 0; m < 2; m++) {
+          const hh = (q) => hash2(i * 3 + m * 977 + q * 131, j * 5 - m * 613 + q * 71);
+          const cx = x + (m ? hh(1) : 0.2 + 0.6 * hh(1)) * s, cy = y + (m ? hh(2) : 0.2 + 0.6 * hh(2)) * s, R = r * (m ? 0.45 + 0.5 * hh(3) : 0.9 + 1.1 * hh(3));
+          const n = 4 + Math.floor(hh(4) * 3), rot = hh(5) * TAU;
+          for (let v = 0; v < n; v++) {
+            const a = rot + v / n * TAU, rr = R * (0.65 + 0.45 * hh(10 + v));
+            v ? ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr) : ctx.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+          }
+          ctx.closePath();
+        }
       }
       ctx.fill(); break;
     }
@@ -256,10 +335,13 @@ function renderMaterial(canvas, st, view) {
   const u = Math.min(W, H) / 1080, S = st.size * u, TAU = Math.PI * 2, ov = 0.5;
   // Grid: a whole number of square-ish tiles across the short side (st.tiles) and down the long
   // side. The app only offers tile counts whose cells stay square to within ~1.5 %.
-  const shortSide = Math.min(W, H), longSide = Math.max(W, H);
+  // On a landscape screen st.band (the menu bar height) can be left out of the fit: the grid then
+  // fits exactly below it and the strip behind the menu bar shows a cut-off extra row.
+  const band = W > H ? Math.max(0, Math.min(H * 0.25, st.band || 0)) : 0, Hu = H - band;
+  const shortSide = Math.min(W, Hu), longSide = Math.max(W, Hu);
   const nS = Math.max(1, Math.round(st.tiles || shortSide / (S * 9)));
   const g = shortSide / nS, nL = Math.max(1, Math.round(longSide / g));
-  const nx = W <= H ? nS : nL, ny = W <= H ? nL : nS, gx = W / nx, gy = H / ny;
+  const nx = W <= Hu ? nS : nL, ny = W <= Hu ? nL : nS, gx = W / nx, gy = Hu / ny;
   const rng = mulberry32(st.seed * 9973 + 17);
   const inks = N > 2 ? cols.slice(1) : cols;
   const cellRng = (i, j) => mulberry32(st.seed * 131 + i * 7919 + j * 104729);
@@ -272,14 +354,16 @@ function renderMaterial(canvas, st, view) {
   // Each tile is clipped to whole canvas pixels, so neighbouring tiles never leave a hairline seam.
   const eachCell = (fn) => {
     const cw = canvas.width, ch = canvas.height;
-    for (let j = 0; j < ny; j++) {
-      const y0 = Math.round((j * gy - oy) * k), y1 = Math.round(((j + 1) * gy - oy) * k);
-      if (y1 <= 0 || y0 >= ch) continue;
+    const top = Math.round(-oy * k); // wallpaper top edge in canvas pixels
+    for (let j = band > 0 ? -1 : 0; j < ny; j++) {
+      const y0 = Math.round((band + j * gy - oy) * k), y1 = Math.round((band + (j + 1) * gy - oy) * k);
+      const yc = Math.max(y0, top); // the band row is clipped at the top edge, drawn full size
+      if (y1 <= 0 || yc >= ch || y1 <= yc) continue;
       for (let i = 0; i < nx; i++) {
         const x0 = Math.round((i * gx - ox) * k), x1 = Math.round(((i + 1) * gx - ox) * k);
-        if (x1 <= 0 || x0 >= cw || x1 <= x0 || y1 <= y0) continue;
+        if (x1 <= 0 || x0 >= cw || x1 <= x0) continue;
         ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.beginPath(); ctx.rect(x0, y0, x1 - x0, y1 - y0); ctx.clip();
+        ctx.beginPath(); ctx.rect(x0, yc, x1 - x0, y1 - yc); ctx.clip();
         ctx.translate(x0, y0); ctx.scale((x1 - x0) / g, (y1 - y0) / g);
         fn(0, 0, cellRng(i, j), i, j);
         ctx.restore();
@@ -336,7 +420,8 @@ function renderMaterial(canvas, st, view) {
         if (vert) { split(x, y, a, h, depth + 1); split(x + a, y, w - a, h, depth + 1); }
         else { split(x, y, w, a, depth + 1); split(x, y + a, w, h - a, depth + 1); }
       };
-      split(-gap / 2, -gap / 2, W + gap, H + gap, 0);
+      if (band > 0) split(-gap / 2, band - g - gap / 2, W + gap, g, 0); // cut-off row behind the menu bar
+      split(-gap / 2, band - gap / 2, W + gap, Hu + gap, 0);
       break;
     }
     case "truchet": {

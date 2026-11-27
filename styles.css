@@ -77,7 +77,7 @@ body {
 .lock-date::first-letter { text-transform: uppercase; }
 .lock-time { font-family: var(--font-display); font-weight: 700; font-size: calc(var(--mw) * 0.24); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .mock.desk { inset: 6px; }
-.menubar { position: absolute; inset: 0 0 auto; height: calc(var(--mw) * 0.022); background: rgba(255,255,255,.22); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; align-items: center; gap: calc(var(--mw) * 0.012); padding: 0 calc(var(--mw) * 0.012); }
+.menubar { position: absolute; inset: 0 0 auto; height: var(--mbh, calc(var(--mw) * 0.022)); background: rgba(255,255,255,.22); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; align-items: center; gap: calc(var(--mw) * 0.012); padding: 0 calc(var(--mw) * 0.012); }
 .menubar span { width: calc(var(--mw) * 0.03); height: 30%; border-radius: 3px; background: rgba(255,255,255,.75); }
 .menubar b { margin-left: auto; font-size: calc(var(--mw) * 0.011); font-weight: 600; font-family: var(--font-body); }
 .dock { position: absolute; left: 50%; bottom: calc(var(--mw) * 0.008); transform: translateX(-50%); display: flex; gap: calc(var(--mw) * 0.006); padding: calc(var(--mw) * 0.006); border-radius: calc(var(--mw) * 0.014); background: rgba(255,255,255,.22); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }

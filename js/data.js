@@ -13,16 +13,16 @@ const PRESETS = [
   { id: "s24u", name: "Galaxy S24 Ultra", w: 1440, h: 3120 },
   { id: "pixel9", name: "Pixel 9", w: 1080, h: 2424 },
   { id: "android", name: "Android FHD+", w: 1080, h: 2400 },
-  { id: "mba13", name: "MacBook Air 13″", w: 2560, h: 1664 },
-  { id: "mba15", name: "MacBook Air 15″", w: 2880, h: 1864 },
-  { id: "mbp14", name: "MacBook Pro 14″", w: 3024, h: 1964 },
-  { id: "mbp16", name: "MacBook Pro 16″", w: 3456, h: 2234 },
-  { id: "imac24", name: "iMac 24″", w: 4480, h: 2520 },
-  { id: "fhd", name: "Monitor Full HD", w: 1920, h: 1080 },
-  { id: "qhd", name: "Monitor QHD", w: 2560, h: 1440 },
-  { id: "uw", name: "Ultrapanorámico 21:9", w: 3440, h: 1440 },
-  { id: "4k", name: "Monitor 4K", w: 3840, h: 2160 },
-  { id: "5k", name: "Studio Display 5K", w: 5120, h: 2880 },
+  { id: "mba13", name: "MacBook Air 13″", w: 2560, h: 1664, menu: 74 },
+  { id: "mba15", name: "MacBook Air 15″", w: 2880, h: 1864, menu: 74 },
+  { id: "mbp14", name: "MacBook Pro 14″", w: 3024, h: 1964, menu: 74 },
+  { id: "mbp16", name: "MacBook Pro 16″", w: 3456, h: 2234, menu: 74 },
+  { id: "imac24", name: "iMac 24″", w: 4480, h: 2520, menu: 48 },
+  { id: "fhd", name: "Monitor Full HD", w: 1920, h: 1080, menu: 24 },
+  { id: "qhd", name: "Monitor QHD", w: 2560, h: 1440, menu: 24 },
+  { id: "uw", name: "Ultrapanorámico 21:9", w: 3440, h: 1440, menu: 24 },
+  { id: "4k", name: "Monitor 4K", w: 3840, h: 2160, menu: 48 },
+  { id: "5k", name: "Studio Display 5K", w: 5120, h: 2880, menu: 48 },
   { id: "custom", name: "Personalizado…" },
 ];
 const PATTERNS = [
@@ -31,6 +31,7 @@ const PATTERNS = [
   ["triangulos", "Triángulos"], ["escamas", "Escamas"], ["ondas", "Ondas"], ["chevron", "Zigzag"],
   ["rayas", "Rayas"], ["cuadricula", "Cuadrícula"], ["ladrillo", "Ladrillo"], ["fibra", "Fibra"],
   ["hexagonos", "Hexágonos"], ["damero", "Damero"], ["lunares", "Lunares"], ["confeti", "Confeti"],
+  ["destellos", "Destellos"], ["laberinto", "Laberinto"], ["meandro", "Meandro"], ["terrazo", "Terrazo"],
 ];
 const SWATCHES = [
   ["Marino", "#1c1b3c"], ["Medianoche", "#0e1530"], ["Índigo", "#2a2470"], ["Cobalto", "#123a7a"],
@@ -90,6 +91,6 @@ const DEFAULT_CUSTOM = ["#1b1f3b", "#53489a", "#e85d75", "#f6a96c", "#f8e1b8", "
 
 // Values measured from the original wallpaper (1080 px wide): cell 20.12, hole radius 3.9.
 const ORIGINAL = { theme: "dark", base: "#1c1b3c", bottomAuto: true, bottom: "#0a0a16", dotAuto: true, dot: "#03040d",
-                   pattern: "perforado", size: 20.1, dotSize: 39, contrast: 100, grad: 100, grain: 45, soft: 0 };
+                   pattern: "perforado", size: 20.1, dotSize: 39, contrast: 100, grad: 100, grain: 45, soft: 0, relief: 0 };
 const MAX_SIDE = 8192;
 
