@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Crea fondos de pantalla con patrones y formas a la resolución exacta de tu pantalla.">
+<meta name="description" content="Crea fondos de pantalla con patrones, formas, arte abstracto y degradados a la resolución exacta de tu pantalla.">
 <meta name="theme-color" content="#eceef4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0c15" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,164 +14,13 @@
 <title>Tapiz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap">
-<style>
-/* Layout: sticky preview "stage" (left on desktop, top on phones) + one column of control groups.
-   Phones get a sticky save bar at the bottom. */
-:root {
-  --bg: #eceef4;
-  --surface: #ffffff;
-  --sunk: #e3e6ef;
-  --fg: #15162b;
-  --muted: #5b5f78;
-  --line: #d3d7e3;
-  --accent: #3a3ecf;
-  --on-accent: #ffffff;
-  --bezel: #16172a;
-  --ring: rgba(21, 22, 43, 0.14);
-  --stage: #dfe2ec;
-  --font-display: "Space Grotesk", "Instrument Sans", system-ui, sans-serif;
-  --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --r: 14px;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0b0c15; --surface: #141625; --sunk: #1c1f33; --fg: #e8e9f3; --muted: #9094ad;
-    --line: #2a2e47; --accent: #9296ff; --on-accent: #0b0c15; --bezel: #000000;
-    --ring: rgba(255, 255, 255, 0.22); --stage: #11131f; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0b0c15; --surface: #141625; --sunk: #1c1f33; --fg: #e8e9f3; --muted: #9094ad;
-  --line: #2a2e47; --accent: #9296ff; --on-accent: #0b0c15; --bezel: #000000;
-  --ring: rgba(255, 255, 255, 0.22); --stage: #11131f; color-scheme: dark;
-}
-* { box-sizing: border-box; }
-[hidden] { display: none !important; }
-img { max-width: 100%; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: calc(env(safe-area-inset-top, 0px) + 20px) calc(env(safe-area-inset-bottom, 0px) + 32px);
-}
-.app { max-width: 1320px; margin: 0 auto; display: grid; gap: 18px; }
-.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; }
-.top h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); letter-spacing: -0.02em; margin: 0; }
-.top p { margin: 0; color: var(--muted); text-wrap: balance; }
-
-.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 24px; align-items: start; }
-@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
-
-/* ---- stage ---- */
-.stage {
-  position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px);
-  background: var(--stage); border: 1px solid var(--line); border-radius: 20px;
-  padding: 14px; display: grid; gap: 12px; min-width: 0;
-}
-@media (max-width: 900px) { .stage { position: relative; top: 0; padding: 10px; } }
-.stage-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
-.viewport { width: 100%; height: min(72vh, 780px); display: grid; place-items: center; min-width: 0; position: relative; }
-.device { background: var(--bezel); padding: 7px; border-radius: 34px; box-shadow: 0 22px 60px -24px rgba(10, 12, 40, 0.6); max-width: 100%; position: relative; }
-.device.is-wide { padding: 6px; border-radius: 12px; }
-.device canvas { display: block; border-radius: 27px; touch-action: none; }
-.device.is-wide canvas { border-radius: 6px; }
-.device.is-detail canvas { cursor: grab; }
-.device.is-detail canvas:active { cursor: grabbing; }
-.badge {
-  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
-  font-family: var(--font-mono); font-size: 0.72rem; padding: 4px 9px; border-radius: 99px;
-  background: rgba(0,0,0,.55); color: #fff; pointer-events: none; white-space: nowrap;
-}
-.meta { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); margin: 0; font-variant-numeric: tabular-nums; }
-
-/* ---- controls ---- */
-.panel { display: grid; gap: 12px; min-width: 0; }
-.group { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; margin: 0; display: grid; gap: 10px; min-width: 0; }
-.group legend { float: left; width: 100%; padding: 0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600; color: var(--muted); }
-.group legend + * { clear: both; }
-.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-label { font-size: 0.9rem; }
-select, input[type="number"] {
-  font: inherit; color: var(--fg); background: var(--sunk); border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; min-width: 0;
-}
-select { width: 100%; }
-input[type="number"] { width: 100%; font-family: var(--font-mono); font-size: 0.9rem; }
-.dims { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
-.dims span { color: var(--muted); font-family: var(--font-mono); }
-.detected { font-size: 0.82rem; color: var(--muted); margin: 0; }
-.detected b { font-family: var(--font-mono); font-weight: 500; color: var(--fg); }
-
-.seg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--sunk); border-radius: 10px; padding: 3px; gap: 3px; }
-.seg.full { display: grid; }
-.seg input { position: absolute; opacity: 0; pointer-events: none; }
-.seg label { text-align: center; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 0.88rem; white-space: nowrap; }
-.seg input:checked + label { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
-.seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 8px; }
-.swatch {
-  aspect-ratio: 1; width: 100%; max-width: 40px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
-  box-shadow: inset 0 0 0 1px var(--ring), 0 0 0 2px var(--surface), 0 0 0 3px transparent;
-}
-.swatch[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--ring), 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
-.color-field { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; }
-.color-field input[type="color"] { width: 46px; height: 32px; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--sunk); cursor: pointer; }
-.color-field input[type="color"]:disabled { opacity: 0.45; cursor: not-allowed; }
-.check { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
-
-.patterns { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 10px 8px; }
-.pat { position: relative; display: grid; gap: 5px; justify-items: center; cursor: pointer; font-size: 0.75rem; color: var(--muted); text-align: center; }
-.pat input { position: absolute; opacity: 0; pointer-events: none; }
-.pat canvas { width: 100%; aspect-ratio: 1; border-radius: 12px; display: block; box-shadow: inset 0 0 0 1px var(--ring); outline: 2px solid transparent; outline-offset: 2px; }
-.pat:hover canvas { outline-color: var(--line); }
-.pat input:checked ~ canvas { outline-color: var(--accent); }
-.pat input:checked ~ span { color: var(--fg); font-weight: 600; }
-.pat input:focus-visible ~ canvas { outline: 2px dashed var(--accent); }
-
-.palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
-.pal { position: relative; display: grid; gap: 6px; padding: 8px; border-radius: 11px; border: 1px solid var(--line); cursor: pointer; background: var(--sunk); }
-.pal input { position: absolute; opacity: 0; pointer-events: none; }
-.pal .strip { display: flex; height: 22px; border-radius: 7px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--ring); }
-.pal .strip i { flex: 1; }
-.pal span { font-size: 0.8rem; color: var(--muted); }
-.pal:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.pal:has(input:checked) span { color: var(--fg); font-weight: 600; }
-.pal:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
-.slider output { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
-
-.actions { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
-@media (max-width: 900px) {
-  .actions {
-    position: sticky; bottom: 0; z-index: 5; margin-inline: -4px;
-    background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    padding: 10px 4px calc(env(safe-area-inset-bottom, 0px) + 10px); border-top: 1px solid var(--line);
-  }
-}
-button.primary, button.ghost { font: inherit; font-weight: 600; border-radius: 11px; padding: 12px 16px; cursor: pointer; }
-button.primary { background: var(--accent); color: var(--on-accent); border: 0; }
-button.ghost { background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
-button.ghost.small { padding: 7px 11px; font-weight: 500; font-size: 0.85rem; }
-button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-button:disabled { opacity: 0.6; cursor: progress; }
-.status { min-height: 1.3em; margin: 0; font-size: 0.85rem; color: var(--muted); }
-
-.sheet { position: fixed; inset: 0; background: rgba(5, 6, 14, 0.86); display: grid; place-items: center; z-index: 20;
-  padding: calc(env(safe-area-inset-top, 0px) + 16px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 16px) max(16px, env(safe-area-inset-left, 0px)); }
-.sheet-card { display: grid; gap: 12px; justify-items: center; max-height: 100%; color: #e8e9f3; text-align: center; }
-.sheet-card img { max-height: 70vh; border-radius: 14px; }
-.sheet-card p { margin: 0; max-width: 34ch; }
-.sheet-card button { background: transparent; color: #e8e9f3; border: 1px solid #3a3d55; }
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="app">
   <header class="top">
     <h1>Tapiz</h1>
-    <p>Fondos de pantalla con patrones y formas, a la resolución exacta de tu pantalla.</p>
+    <p>Fondos de pantalla con patrones, formas, arte abstracto y degradados, a la resolución exacta de tu pantalla.</p>
   </header>
 
   <main class="layout">
@@ -181,93 +30,138 @@ button:disabled { opacity: 0.6; cursor: progress; }
           <input type="radio" name="view" id="viewFull" value="full"><label for="viewFull">Completa</label>
           <input type="radio" name="view" id="viewDetail" value="detail"><label for="viewDetail">Detalle 1:1</label>
         </div>
+        <span class="check"><input type="checkbox" id="mock"><label for="mock">Simular pantalla</label></span>
         <p class="meta" id="meta"></p>
       </div>
       <div class="viewport" id="viewport">
         <div class="device" id="device">
           <canvas id="preview" aria-label="Vista previa del fondo"></canvas>
+          <div class="mock lock" id="mockLock" hidden aria-hidden="true">
+            <div class="lock-date" id="lockDate"></div>
+            <div class="lock-time" id="lockTime"></div>
+          </div>
+          <div class="mock desk" id="mockDesk" hidden aria-hidden="true">
+            <div class="menubar"><span></span><span></span><span></span><b id="deskTime"></b></div>
+            <div class="dock"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
           <span class="badge" id="badge" hidden>Arrastra para mover · tamaño real</span>
+          <div class="busy" id="busy" hidden><span></span></div>
         </div>
       </div>
     </section>
 
-    <form class="panel" id="panel" autocomplete="off">
-      <fieldset class="group">
-        <legend>Pantalla</legend>
-        <p class="detected" id="detected"></p>
-        <select id="preset" aria-label="Tamaño de pantalla"></select>
-        <div class="dims" id="customDims" hidden>
-          <input type="number" id="cw" min="200" max="8192" step="1" aria-label="Ancho en píxeles">
-          <span>×</span>
-          <input type="number" id="ch" min="200" max="8192" step="1" aria-label="Alto en píxeles">
+    <div class="panel">
+      <nav class="tabs" role="tablist" aria-label="Secciones">
+        <button type="button" role="tab" data-tab="design" id="tab-design">Diseño</button>
+        <button type="button" role="tab" data-tab="color" id="tab-color">Color</button>
+        <button type="button" role="tab" data-tab="adjust" id="tab-adjust">Ajustes</button>
+        <button type="button" role="tab" data-tab="screen" id="tab-screen">Pantalla</button>
+        <button type="button" role="tab" data-tab="fav" id="tab-fav">Favoritos</button>
+      </nav>
+
+      <form class="panel-body" id="panel" autocomplete="off">
+        <!-- Diseño -->
+        <fieldset class="group" data-tab="design">
+          <legend>Estilo</legend>
+          <div class="styles" id="styles" role="radiogroup" aria-label="Estilo"></div>
+        </fieldset>
+        <fieldset class="group" data-tab="design" data-only="pattern">
+          <legend>Patrón</legend>
+          <div class="patterns" id="patterns"></div>
+        </fieldset>
+        <fieldset class="group" data-tab="design" data-only="material">
+          <legend>Forma</legend>
+          <div class="patterns" id="grid-material"></div>
+        </fieldset>
+        <fieldset class="group" data-tab="design" data-only="abstract">
+          <legend>Composición</legend>
+          <div class="patterns" id="grid-abstract"></div>
+        </fieldset>
+        <fieldset class="group" data-tab="design" data-only="gradient">
+          <legend>Degradado</legend>
+          <div class="patterns" id="grid-gradient"></div>
+        </fieldset>
+
+        <!-- Color -->
+        <fieldset class="group" data-tab="color">
+          <legend>Tema</legend>
+          <div class="seg full" role="radiogroup" aria-label="Tema del fondo">
+            <input type="radio" name="theme" id="themeDark" value="dark"><label for="themeDark">Oscuro</label>
+            <input type="radio" name="theme" id="themeLight" value="light"><label for="themeLight">Claro</label>
+          </div>
+        </fieldset>
+        <fieldset class="group" data-tab="color" data-only="material abstract gradient">
+          <legend>Paleta</legend>
+          <div class="palettes" id="palettes"></div>
+        </fieldset>
+        <fieldset class="group" data-tab="color" id="customGroup">
+          <legend>Tu paleta</legend>
+          <div class="custom-cols" id="customCols"></div>
+          <div class="row">
+            <button type="button" class="ghost small" id="customAdd">Añadir color</button>
+            <button type="button" class="ghost small" id="customRemove">Quitar color</button>
+            <button type="button" class="ghost small" id="customFrom">Copiar paleta anterior</button>
+          </div>
+        </fieldset>
+        <fieldset class="group" data-tab="color" id="colorGroup">
+          <legend>Color</legend>
+          <div class="swatches" id="swatches"></div>
+          <div class="color-field"><label for="base">Color base</label><input type="color" id="base"></div>
+          <div class="color-field" data-only="pattern">
+            <label for="bottom">Color inferior</label>
+            <span class="row"><span class="check"><input type="checkbox" id="bottomAuto"><label for="bottomAuto">Automático</label></span><input type="color" id="bottom"></span>
+          </div>
+          <div class="color-field" data-only="pattern">
+            <label for="dot">Color del patrón</label>
+            <span class="row"><span class="check"><input type="checkbox" id="dotAuto"><label for="dotAuto">Automático</label></span><input type="color" id="dot"></span>
+          </div>
+        </fieldset>
+
+        <!-- Ajustes -->
+        <fieldset class="group" data-tab="adjust">
+          <legend>Ajustes</legend>
+          <div class="slider"><label for="size">Escala</label><output for="size" id="sizeOut"></output><input type="range" id="size" min="8" max="80" step="0.1"></div>
+          <div class="slider" data-only="pattern"><label for="dotSize">Grosor del patrón</label><output for="dotSize" id="dotSizeOut"></output><input type="range" id="dotSize" min="10" max="80" step="1"></div>
+          <div class="slider" data-only="pattern"><label for="contrast">Contraste</label><output for="contrast" id="contrastOut"></output><input type="range" id="contrast" min="10" max="100" step="1"></div>
+          <div class="slider" data-only="pattern"><label for="grad">Degradado</label><output for="grad" id="gradOut"></output><input type="range" id="grad" min="0" max="100" step="1"></div>
+          <div class="slider" data-only="material abstract gradient"><label for="layers">Colores</label><output for="layers" id="layersOut"></output><input type="range" id="layers" min="3" max="10" step="1"></div>
+          <div class="slider"><label for="grain">Grano</label><output for="grain" id="grainOut"></output><input type="range" id="grain" min="0" max="100" step="1"></div>
+          <div class="slider" data-only="pattern"><label for="soft">Desenfoque</label><output for="soft" id="softOut"></output><input type="range" id="soft" min="0" max="100" step="1"></div>
+          <div class="row" data-only="material abstract gradient"><button type="button" class="ghost small" id="newShape">Nueva variación</button><span class="hint" id="seedOut"></span></div>
+        </fieldset>
+
+        <!-- Pantalla -->
+        <fieldset class="group" data-tab="screen">
+          <legend>Pantalla</legend>
+          <p class="detected" id="detected"></p>
+          <select id="preset" aria-label="Tamaño de pantalla"></select>
+          <div class="dims" id="customDims" hidden>
+            <input type="number" id="cw" min="200" max="8192" step="1" aria-label="Ancho en píxeles">
+            <span>×</span>
+            <input type="number" id="ch" min="200" max="8192" step="1" aria-label="Alto en píxeles">
+          </div>
+          <div class="row"><button type="button" class="ghost small" id="rotate">Girar orientación</button></div>
+        </fieldset>
+
+        <!-- Favoritos -->
+        <fieldset class="group" data-tab="fav">
+          <legend>Favoritos</legend>
+          <div class="row">
+            <button type="button" class="ghost small" id="favAdd">Guardar este diseño</button>
+            <button type="button" class="ghost small" id="share">Copiar enlace</button>
+          </div>
+          <div class="favs" id="favs"></div>
+          <p class="hint" id="favEmpty">Guarda diseños para volver a ellos más tarde. Se quedan en este navegador.</p>
+        </fieldset>
+
+        <div class="actions">
+          <button type="button" class="primary" id="save">Guardar PNG</button>
+          <button type="button" class="ghost" id="random" title="Combinación aleatoria">Sorpréndeme</button>
+          <button type="button" class="ghost" id="reset" title="Volver al fondo original">Original</button>
         </div>
-        <div class="row"><button type="button" class="ghost small" id="rotate">Girar orientación</button></div>
-      </fieldset>
-
-      <fieldset class="group">
-        <legend>Tema</legend>
-        <div class="seg full" role="radiogroup" aria-label="Tema del fondo">
-          <input type="radio" name="theme" id="themeDark" value="dark"><label for="themeDark">Oscuro</label>
-          <input type="radio" name="theme" id="themeLight" value="light"><label for="themeLight">Claro</label>
-        </div>
-      </fieldset>
-
-      <fieldset class="group">
-        <legend>Estilo</legend>
-        <div class="seg full" role="radiogroup" aria-label="Estilo">
-          <input type="radio" name="style" id="stylePattern" value="pattern"><label for="stylePattern">Patrón</label>
-          <input type="radio" name="style" id="styleMaterial" value="material"><label for="styleMaterial">Material</label>
-        </div>
-      </fieldset>
-
-      <fieldset class="group" data-only="material">
-        <legend>Forma</legend>
-        <div class="patterns" id="shapes"></div>
-        <div class="row"><button type="button" class="ghost small" id="newShape">Nueva variación</button></div>
-      </fieldset>
-
-      <fieldset class="group" data-only="material">
-        <legend>Paleta</legend>
-        <div class="palettes" id="palettes"></div>
-      </fieldset>
-
-      <fieldset class="group" id="colorGroup">
-        <legend>Color</legend>
-        <div class="swatches" id="swatches"></div>
-        <div class="color-field"><label for="base">Color base</label><input type="color" id="base"></div>
-        <div class="color-field" data-only="pattern">
-          <label for="bottom">Color inferior</label>
-          <span class="row"><span class="check"><input type="checkbox" id="bottomAuto"><label for="bottomAuto">Automático</label></span><input type="color" id="bottom"></span>
-        </div>
-        <div class="color-field" data-only="pattern">
-          <label for="dot">Color del patrón</label>
-          <span class="row"><span class="check"><input type="checkbox" id="dotAuto"><label for="dotAuto">Automático</label></span><input type="color" id="dot"></span>
-        </div>
-      </fieldset>
-
-      <fieldset class="group" data-only="pattern">
-        <legend>Patrón</legend>
-        <div class="patterns" id="patterns"></div>
-      </fieldset>
-
-      <fieldset class="group">
-        <legend>Ajustes</legend>
-        <div class="slider"><label for="size">Escala</label><output for="size" id="sizeOut"></output><input type="range" id="size" min="8" max="80" step="0.1"></div>
-        <div class="slider" data-only="pattern"><label for="dotSize">Grosor del patrón</label><output for="dotSize" id="dotSizeOut"></output><input type="range" id="dotSize" min="10" max="80" step="1"></div>
-        <div class="slider" data-only="pattern"><label for="contrast">Contraste</label><output for="contrast" id="contrastOut"></output><input type="range" id="contrast" min="10" max="100" step="1"></div>
-        <div class="slider" data-only="pattern"><label for="grad">Degradado</label><output for="grad" id="gradOut"></output><input type="range" id="grad" min="0" max="100" step="1"></div>
-        <div class="slider" data-only="material"><label for="layers">Capas</label><output for="layers" id="layersOut"></output><input type="range" id="layers" min="3" max="10" step="1"></div>
-        <div class="slider"><label for="grain">Grano</label><output for="grain" id="grainOut"></output><input type="range" id="grain" min="0" max="100" step="1"></div>
-        <div class="slider" data-only="pattern"><label for="soft">Desenfoque</label><output for="soft" id="softOut"></output><input type="range" id="soft" min="0" max="100" step="1"></div>
-      </fieldset>
-
-      <div class="actions">
-        <button type="button" class="primary" id="save">Guardar PNG</button>
-        <button type="button" class="ghost" id="random" title="Combinación aleatoria">Sorpréndeme</button>
-        <button type="button" class="ghost" id="reset" title="Volver al fondo original">Original</button>
-      </div>
-      <p class="status" id="status" aria-live="polite"></p>
-    </form>
+        <p class="status" id="status" aria-live="polite"></p>
+      </form>
+    </div>
   </main>
 </div>
 
@@ -279,898 +173,9 @@ button:disabled { opacity: 0.6; cursor: progress; }
   </div>
 </div>
 
-<script>
-(() => {
-  "use strict";
-  const $ = (id) => document.getElementById(id);
-
-  // ---------- data ----------
-  const PRESETS = [
-    { id: "auto", name: "Esta pantalla" },
-    { id: "ip16pm", name: "iPhone 16 Pro Max", w: 1320, h: 2868 },
-    { id: "ip16p", name: "iPhone 16 Pro", w: 1206, h: 2622 },
-    { id: "ip16plus", name: "iPhone 16 Plus / 15 Pro Max", w: 1290, h: 2796 },
-    { id: "ip16", name: "iPhone 16 / 15 / 15 Pro", w: 1179, h: 2556 },
-    { id: "ip13", name: "iPhone 14 / 13 / 12", w: 1170, h: 2532 },
-    { id: "ipse", name: "iPhone SE", w: 750, h: 1334 },
-    { id: "ipadpro13", name: "iPad Pro 13″", w: 2064, h: 2752 },
-    { id: "ipadair11", name: "iPad Air 11″", w: 1640, h: 2360 },
-    { id: "s24u", name: "Galaxy S24 Ultra", w: 1440, h: 3120 },
-    { id: "pixel9", name: "Pixel 9", w: 1080, h: 2424 },
-    { id: "android", name: "Android FHD+", w: 1080, h: 2400 },
-    { id: "mba13", name: "MacBook Air 13″", w: 2560, h: 1664 },
-    { id: "mba15", name: "MacBook Air 15″", w: 2880, h: 1864 },
-    { id: "mbp14", name: "MacBook Pro 14″", w: 3024, h: 1964 },
-    { id: "mbp16", name: "MacBook Pro 16″", w: 3456, h: 2234 },
-    { id: "imac24", name: "iMac 24″", w: 4480, h: 2520 },
-    { id: "fhd", name: "Monitor Full HD", w: 1920, h: 1080 },
-    { id: "qhd", name: "Monitor QHD", w: 2560, h: 1440 },
-    { id: "uw", name: "Ultrapanorámico 21:9", w: 3440, h: 1440 },
-    { id: "4k", name: "Monitor 4K", w: 3840, h: 2160 },
-    { id: "5k", name: "Studio Display 5K", w: 5120, h: 2880 },
-    { id: "custom", name: "Personalizado…" },
-  ];
-  const PATTERNS = [
-    ["perforado", "Perforado"], ["rejilla", "Rejilla"], ["panal", "Panal"], ["semitono", "Semitono"],
-    ["anillos", "Anillos"], ["rombos", "Rombos"], ["placa", "Chapa"], ["cruces", "Cruces"],
-    ["triangulos", "Triángulos"], ["escamas", "Escamas"], ["ondas", "Ondas"], ["chevron", "Zigzag"],
-    ["rayas", "Rayas"], ["cuadricula", "Cuadrícula"], ["ladrillo", "Ladrillo"], ["fibra", "Fibra"],
-    ["hexagonos", "Hexágonos"], ["damero", "Damero"], ["lunares", "Lunares"], ["confeti", "Confeti"],
-  ];
-  const SWATCHES = [
-    ["Marino", "#1c1b3c"], ["Medianoche", "#0e1530"], ["Índigo", "#2a2470"], ["Cobalto", "#123a7a"],
-    ["Océano", "#0f2c40"], ["Turquesa", "#0d4a4a"], ["Bosque", "#172b21"], ["Esmeralda", "#0f4a33"],
-    ["Oliva", "#3a3d1c"], ["Bronce", "#3a2a17"], ["Ámbar", "#6b4310"], ["Terracota", "#5c2a1c"],
-    ["Vino", "#36151f"], ["Frambuesa", "#5e1638"], ["Ciruela", "#2b1738"], ["Lavanda", "#4a3a78"],
-    ["Pizarra", "#1f2a33"], ["Grafito", "#24262c"], ["Carbón", "#121214"], ["Arena", "#6e6450"],
-  ];
-  const SHAPES = [
-    ["manchas", "Topografía"], ["feston", "Festón"], ["bauhaus", "Bauhaus"], ["arcoiris", "Arcoíris"],
-    ["pastillas", "Pastillas"], ["escalones", "Escalones"], ["cintas", "Cintas"], ["origami", "Origami"],
-    ["burbujas", "Burbujas"], ["sol", "Sol"], ["colinas", "Colinas"], ["arcos", "Arcos"],
-  ];
-  const PALETTES = [
-    ["costa", "Costa", ["#14233f", "#29385f", "#e8632c", "#f49560", "#f5d3b1", "#dab284", "#93b1cc", "#6096c2", "#115e9b", "#023060"]],
-    ["atardecer", "Atardecer", ["#10232f", "#1e3c44", "#365f62", "#d6ae7f", "#d6843a", "#c9642a", "#b33a1a", "#7a1e0d"]],
-    ["retro", "Retro", ["#264653", "#2a9d8f", "#8ab17d", "#e9c46a", "#f4a261", "#e76f51"]],
-    ["oceano", "Océano", ["#04192b", "#0b3352", "#145a80", "#2a8aaa", "#6fc2c9", "#c9e8df", "#f4efdc"]],
-    ["bosque", "Bosque", ["#0f2018", "#1f3b2b", "#3d6347", "#8aa66f", "#d8d3a1", "#e9b770", "#c8743a"]],
-    ["lavanda", "Lavanda", ["#1b1533", "#2e2557", "#51438a", "#8a7cc7", "#c7b9ec", "#f0c9d6", "#e58fa6"]],
-    ["neon", "Neón", ["#0d0221", "#261447", "#541388", "#d90368", "#f75c03", "#f1c40f"]],
-    ["menta", "Menta", ["#0b2b26", "#163832", "#235347", "#8eb69b", "#daf1de", "#f6fbf4"]],
-    ["arena", "Arena", ["#3b2f2f", "#6b4f3f", "#a47551", "#d0b49f", "#e4d4c8", "#f6efe8"]],
-    ["bauhaus", "Bauhaus", ["#f1e9da", "#1f1f1f", "#2b4c7e", "#e9c46a", "#e85d3a"]],
-    ["aurora", "Aurora", ["#0b1026", "#1b2a4a", "#1f5f6b", "#2fa38a", "#7be0a8", "#d4f5c9"]],
-    ["sorbete", "Sorbete", ["#2d2a4a", "#6c5b9e", "#c9a7eb", "#ffb3c6", "#ffd6a5", "#fdffb6"]],
-    ["mediterraneo", "Mediterráneo", ["#0a2540", "#124e78", "#1f8fb5", "#f2e8cf", "#f4a259", "#bc4b51"]],
-    ["miel", "Miel", ["#2b1d0e", "#5c3a12", "#a8641c", "#e09f3e", "#f3c969", "#fff1cf"]],
-    ["granada", "Granada", ["#1a0a12", "#3d0f22", "#7a1b3a", "#c0394f", "#f28c7d", "#fcd5c9"]],
-    ["tropical", "Tropical", ["#062925", "#044a42", "#3a9188", "#b8e1dd", "#f9e0ae", "#fc8b5e", "#ea5455"]],
-    ["grafito", "Grafito", ["#111418", "#232a31", "#3a4652", "#6b7a87", "#aab6bf", "#e3e8ec"]],
-    ["mono", "Monocromo", null],
-  ];
-
-  // Values measured from the original wallpaper (1080 px wide): cell 20.12, hole radius 3.9.
-  const ORIGINAL = { theme: "dark", base: "#1c1b3c", bottomAuto: true, bottom: "#0a0a16", dotAuto: true, dot: "#03040d",
-                     pattern: "perforado", size: 20.1, dotSize: 39, contrast: 100, grad: 100, grain: 45, soft: 0 };
-  const MAX_SIDE = 8192;
-
-  // ---------- state ----------
-  let state = Object.assign({ preset: "auto", rotated: false, cw: 1320, ch: 2868, view: "full",
-                              style: "pattern", shape: "manchas", palette: "costa", layers: 8, seed: 7 }, ORIGINAL);
-  try {
-    const saved = JSON.parse((localStorage.getItem("tapiz-state") || localStorage.getItem("perforado-state")) || "null");
-    if (saved && typeof saved === "object") state = Object.assign(state, saved);
-  } catch (e) { /* storage unavailable */ }
-  if (!PATTERNS.some(([id]) => id === state.pattern)) state.pattern = "perforado";
-  if (!SHAPES.some(([id]) => id === state.shape)) state.shape = "manchas";
-  if (!PALETTES.some(([id]) => id === state.palette)) state.palette = "costa";
-  const persist = () => { try { localStorage.setItem("tapiz-state", JSON.stringify(state)); } catch (e) {} };
-  const pan = { x: 0.5, y: 0.35 }; // detail-view focus, as a fraction of the wallpaper
-
-  // ---------- color helpers ----------
-  const hexToRgb = (hex) => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-  const rgbToHex = (rgb) => "#" + rgb.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
-  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
-  function rgbToHsl([r, g, b]) {
-    r /= 255; g /= 255; b /= 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
-    if (max === min) return [0, 0, l];
-    const d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-    return [h * 60, s, l];
-  }
-  function hslToRgb(h, s, l) {
-    s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));
-    const k = (n) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
-    const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-    return [f(0) * 255, f(8) * 255, f(4) * 255];
-  }
-
-  function palette(st) {
-    const [h, s, l] = rgbToHsl(hexToRgb(st.base));
-    const g = st.grad / 100;
-    let top, bottomAuto, dot;
-    if (st.theme === "dark") {
-      top = hslToRgb(h, s, l);
-      bottomAuto = hslToRgb(h, s, l * (1 - 0.63 * g));
-      dot = hslToRgb(h, Math.min(1, s * 1.65), l * 0.18);
-    } else {
-      top = hslToRgb(h, s * 0.5, 0.95);
-      bottomAuto = hslToRgb(h, s * 0.55, 0.95 - 0.15 * g);
-      dot = hslToRgb(h, Math.min(1, s * 0.75), 0.66);
-    }
-    const bottom = st.bottomAuto ? bottomAuto : mix(top, hexToRgb(st.bottom), g);
-    if (!st.dotAuto) dot = hexToRgb(st.dot);
-    // Contrast pulls the pattern colour towards the plate colour.
-    const plateMid = mix(top, bottom, 0.5);
-    dot = mix(plateMid, dot, st.contrast / 100);
-    return { top, mid: mix(top, bottom, 0.6), bottom, dot, autoDot: st.dotAuto, bottomAutoColor: bottomAuto };
-  }
-
-  // ---------- screen ----------
-  function detectScreen() {
-    const dpr = window.devicePixelRatio || 1;
-    let cw = screen.width, ch = screen.height;
-    const touch = (navigator.maxTouchPoints || 0) > 0 && Math.min(cw, ch) < 1100;
-    if (touch && cw > ch) [cw, ch] = [ch, cw];
-    return { w: Math.round(cw * dpr), h: Math.round(ch * dpr), cw, ch, dpr };
-  }
-  const detected = detectScreen();
-
-  function dims() {
-    let w, h;
-    const p = PRESETS.find((x) => x.id === state.preset) || PRESETS[0];
-    if (p.id === "auto") { w = detected.w; h = detected.h; }
-    else if (p.id === "custom") { w = state.cw; h = state.ch; }
-    else { w = p.w; h = p.h; }
-    w = Math.max(200, Math.min(MAX_SIDE, Math.round(w) || 1080));
-    h = Math.max(200, Math.min(MAX_SIDE, Math.round(h) || 1920));
-    if (state.rotated && p.id !== "custom") [w, h] = [h, w];
-    return { w, h, name: p.id === "auto" ? "Esta pantalla" : p.id === "custom" ? "Personalizado" : p.name };
-  }
-
-  // ---------- renderer ----------
-  // The wallpaper lives in its own W×H pixel space; `k` scales it onto the canvas and (ox, oy)
-  // is the wallpaper point drawn at the canvas origin. Pattern sizes are in "design pixels" of a
-  // 1080-px-wide phone, scaled by the short side, so the look is the same on every screen.
-  function render(canvas, st, view) {
-    if (st.style === "material") return renderMaterial(canvas, st, view);
-    const { W, H } = view, k = view.k ?? 1, ox = view.ox ?? 0, oy = view.oy ?? 0;
-    const ctx = canvas.getContext("2d");
-    const pal = palette(st);
-    const css = (c) => `rgb(${c.map((v) => v.toFixed(1)).join(",")})`;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.filter = "none"; ctx.globalAlpha = 1;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(k, 0, 0, k, -ox * k, -oy * k);
-
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, css(pal.top));
-    grad.addColorStop(0.5, css(pal.mid));
-    grad.addColorStop(1, css(pal.bottom));
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-
-    const u = Math.min(W, H) / 1080;
-    const c = st.size * u, r = c * st.dotSize / 200;
-    const vis = { x0: Math.max(0, ox), y0: Math.max(0, oy),
-                  x1: Math.min(W, ox + canvas.width / k), y1: Math.min(H, oy + canvas.height / k) };
-    ctx.save();
-    ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
-    ctx.fillStyle = css(pal.dot); ctx.strokeStyle = css(pal.dot);
-    if (st.soft > 0 && "filter" in ctx) ctx.filter = `blur(${(st.soft / 100) * r * 0.9 * k}px)`;
-    drawPattern(ctx, st.pattern, { W, H, c, r, ox: (4.61 * u) % c, vis });
-    ctx.restore();
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    addGrain(ctx, canvas.width, canvas.height, st.grain, view.grainScale ?? 1);
-  }
-
-  // Iterate lattice positions covering the visible rect (plus one cell of margin).
-  function* lattice(vis, step, origin, m) {
-    const s = (v, o) => o + Math.floor((v - o) / step) * step - step * (m || 1);
-    for (let y = s(vis.y0, origin.y); y < vis.y1 + step * (m || 1); y += step)
-      for (let x = s(vis.x0, origin.x); x < vis.x1 + step * (m || 1); x += step) yield [x, y];
-  }
-
-  function drawPattern(ctx, id, p) {
-    const { W, H, c, r, ox, vis } = p;
-    const TAU = Math.PI * 2;
-    const circle = (x, y, rr) => { ctx.moveTo(x + rr, y); ctx.arc(x, y, rr, 0, TAU); };
-    const diag = (fn) => { for (const [x, y] of lattice(vis, c, { x: ox, y: 0 })) { fn(x, y, 0); fn(x + c / 2, y + c / 2, 1); } };
-    const hex = (s, fn) => { // hexagonal lattice with spacing s
-      const dy = s * Math.sqrt(3) / 2;
-      const j0 = Math.floor(vis.y0 / dy) - 2;
-      for (let j = j0; j * dy < vis.y1 + dy * 2; j++) {
-        const off = (j & 1) ? s / 2 : 0, y = j * dy;
-        for (let x = ox % s + off + Math.floor((vis.x0 - s * 2) / s) * s; x < vis.x1 + s * 2; x += s) fn(x, y, j);
-      }
-    };
-    ctx.beginPath();
-    switch (id) {
-      case "rejilla": { const s = c / Math.SQRT2; for (const [x, y] of lattice(vis, s, { x: ox, y: s / 2 })) circle(x, y, r); ctx.fill(); break; }
-      case "panal": { hex(c / Math.pow(3, 0.25), (x, y) => circle(x, y, r)); ctx.fill(); break; }
-      case "semitono": {
-        const s = c / Math.SQRT2;
-        for (const [x, y] of lattice(vis, s, { x: ox, y: s / 2 })) {
-          const t = Math.max(0, Math.min(1, y / H));
-          const rr = Math.min(s * 0.62, r * (0.15 + 1.75 * t * t));
-          if (rr > 0.2) circle(x, y, rr);
-        }
-        ctx.fill(); break;
-      }
-      case "anillos": {
-        ctx.lineWidth = Math.max(0.6, r * 0.42);
-        diag((x, y) => circle(x, y, r * 1.15)); ctx.stroke(); break;
-      }
-      case "rombos": {
-        const d = r * 1.3;
-        diag((x, y) => { ctx.moveTo(x, y - d); ctx.lineTo(x + d, y); ctx.lineTo(x, y + d); ctx.lineTo(x - d, y); ctx.closePath(); });
-        ctx.fill(); break;
-      }
-      case "placa": { // diamond tread plate: alternating slanted lozenges
-        diag((x, y, alt) => { ctx.moveTo(x, y); ctx.ellipse(x, y, r * 1.9, r * 0.5, alt ? Math.PI / 4 : -Math.PI / 4, 0, TAU); });
-        ctx.fill(); break;
-      }
-      case "cruces": {
-        const a = r * 1.4, t = r * 0.62;
-        diag((x, y) => { ctx.rect(x - a, y - t / 2, 2 * a, t); ctx.rect(x - t / 2, y - a, t, 2 * a); });
-        ctx.fill("nonzero"); break;
-      }
-      case "triangulos": {
-        const s = c / Math.pow(3, 0.25), t = r * 1.55;
-        hex(s, (x, y, j) => {
-          const up = (j & 1) ? -1 : 1;
-          ctx.moveTo(x, y - t * up); ctx.lineTo(x + t * 0.866, y + t * 0.5 * up); ctx.lineTo(x - t * 0.866, y + t * 0.5 * up); ctx.closePath();
-        });
-        ctx.fill(); break;
-      }
-      case "escamas": {
-        const s = c * 0.9, rr = s / 2;
-        ctx.lineWidth = Math.max(0.6, r * 0.38);
-        const dy = s * 0.5;
-        for (let j = Math.floor(vis.y0 / dy) - 2; j * dy < vis.y1 + s; j++) {
-          const y = j * dy, off = (j & 1) ? rr : 0;
-          for (let x = ox % s + off + Math.floor((vis.x0 - s * 2) / s) * s; x < vis.x1 + s; x += s) {
-            ctx.moveTo(x + rr, y); ctx.arc(x, y, rr, 0, Math.PI);
-          }
-        }
-        ctx.stroke(); break;
-      }
-      case "ondas": {
-        const pY = c * 0.75, amp = c * 0.2, lam = c * 1.6;
-        ctx.lineWidth = Math.max(0.6, r * 0.7); ctx.lineJoin = "round";
-        const step = Math.max(1, c / 10);
-        for (let y = Math.floor(vis.y0 / pY) * pY - pY; y < vis.y1 + pY; y += pY) {
-          ctx.moveTo(vis.x0 - step, y + Math.sin((vis.x0 - step) / lam * TAU) * amp);
-          for (let x = vis.x0; x <= vis.x1 + step; x += step) ctx.lineTo(x, y + Math.sin(x / lam * TAU) * amp);
-        }
-        ctx.stroke(); break;
-      }
-      case "chevron": {
-        const pY = c * 0.7, w = c * 0.7, a = c * 0.3;
-        ctx.lineWidth = Math.max(0.6, r * 0.7); ctx.lineJoin = "miter";
-        const x0 = ox % w + Math.floor((vis.x0 - w * 2) / w) * w;
-        for (let y = Math.floor(vis.y0 / pY) * pY - pY; y < vis.y1 + pY; y += pY) {
-          ctx.moveTo(x0, y);
-          for (let x = x0, i = 0; x < vis.x1 + w; x += w / 2, i++) ctx.lineTo(x + w / 2, y + ((i & 1) ? 0 : a));
-        }
-        ctx.stroke(); break;
-      }
-      case "rayas": {
-        const pp = c / Math.SQRT2;
-        ctx.lineWidth = r * 0.9;
-        const k0 = Math.floor((vis.x0 - vis.y1) / pp) - 2, k1 = Math.ceil((vis.x1 - vis.y0) / pp) + 2;
-        for (let kk = k0; kk <= k1; kk++) { const x0 = kk * pp + (ox % pp); ctx.moveTo(x0 + vis.y0 - pp, vis.y0 - pp); ctx.lineTo(x0 + vis.y1 + pp, vis.y1 + pp); }
-        ctx.stroke(); break;
-      }
-      case "cuadricula": {
-        const pp = c / Math.SQRT2, t = Math.max(0.8, r * 0.35);
-        for (let x = ox % pp + Math.floor((vis.x0 - pp) / pp) * pp; x < vis.x1 + pp; x += pp) ctx.rect(x - t / 2, vis.y0, t, vis.y1 - vis.y0);
-        for (let y = pp / 2 + Math.floor((vis.y0 - pp) / pp) * pp; y < vis.y1 + pp; y += pp) ctx.rect(vis.x0, y - t / 2, vis.x1 - vis.x0, t);
-        ctx.fill("nonzero"); break;
-      }
-      case "ladrillo": {
-        const bw = c * 1.4, bh = c * 0.7, t = Math.max(0.8, r * 0.38);
-        for (let j = Math.floor(vis.y0 / bh) - 1; j * bh < vis.y1 + bh; j++) {
-          const y = j * bh;
-          ctx.rect(vis.x0, y - t / 2, vis.x1 - vis.x0, t);
-          const off = (j & 1) ? bw / 2 : 0;
-          for (let x = ox % bw + off + Math.floor((vis.x0 - bw * 2) / bw) * bw; x < vis.x1 + bw; x += bw) ctx.rect(x - t / 2, y, t, bh);
-        }
-        ctx.fill("nonzero"); break;
-      }
-      case "fibra": {
-        const half = c / 2, t = half * Math.min(0.46, 0.12 + r / c), gap = (half - 2 * t) / 3;
-        ctx.globalAlpha = 0.85;
-        for (const [x, y] of lattice(vis, half, { x: ox % half, y: 0 })) {
-          const i = Math.round((x - ox % half) / half), j = Math.round(y / half);
-          if ((i + j) & 1) { ctx.rect(x + 0.5, y + gap, half - 1, t); ctx.rect(x + 0.5, y + 2 * gap + t, half - 1, t); }
-          else { ctx.rect(x + gap, y + 0.5, t, half - 1); ctx.rect(x + 2 * gap + t, y + 0.5, t, half - 1); }
-        }
-        ctx.fill("nonzero"); ctx.globalAlpha = 1; break;
-      }
-      case "hexagonos": {
-        const s = c * 1.1, R = s / Math.sqrt(3);
-        ctx.lineWidth = Math.max(0.6, r * 0.38); ctx.lineJoin = "round";
-        hex(s, (x, y) => {
-          for (let i = 0; i < 6; i++) {
-            const a = Math.PI / 6 + i * Math.PI / 3, px = x + R * Math.cos(a), py = y + R * Math.sin(a);
-            i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-          }
-          ctx.closePath();
-        });
-        ctx.stroke(); break;
-      }
-      case "damero": { const a = r * 0.95; diag((x, y) => ctx.rect(x - a, y - a, 2 * a, 2 * a)); ctx.fill(); break; }
-      case "lunares": { diag((x, y, alt) => circle(x, y, alt ? r * 0.5 : r * 1.25)); ctx.fill(); break; }
-      case "confeti": { // deterministic scatter: one dot per cell, position/size from a hash
-        const hash = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-        const s = c * 0.8;
-        for (const [x, y] of lattice(vis, s, { x: 0, y: 0 })) {
-          const i = Math.round(x / s), j = Math.round(y / s);
-          const h1 = hash(i, j), h2 = hash(j + 7919, i), h3 = hash(i + 104729, j + 31);
-          circle(x + h1 * s, y + h2 * s, r * (0.35 + 0.9 * h3));
-        }
-        ctx.fill(); break;
-      }
-      default: diag((x, y) => circle(x, y, r)); ctx.fill();
-    }
-  }
-
-  // ---------- material styles: big layered multicolour shapes ----------
-  function mulberry32(a) {
-    return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-  }
-  function materialColors(st) {
-    const entry = PALETTES.find(([id]) => id === st.palette) || PALETTES[0];
-    let base;
-    if (entry[2]) base = entry[2].map(hexToRgb);
-    else { const [h, s] = rgbToHsl(hexToRgb(st.base)); base = [0, 1, 2, 3, 4, 5, 6].map((i) => hslToRgb(h, Math.max(0.15, s) * (1 - i * 0.06), 0.08 + i * 0.12)); }
-    const n = Math.max(2, st.layers || base.length), out = [];
-    for (let i = 0; i < n; i++) {
-      const t = i / (n - 1) * (base.length - 1), j = Math.min(base.length - 2, Math.floor(t));
-      out.push(mix(base[j], base[j + 1], t - j));
-    }
-    return st.theme === "light" ? out.map((c) => mix(c, [255, 255, 255], 0.35)) : out;
-  }
-
-  function renderMaterial(canvas, st, view) {
-    const { W, H } = view, k = view.k ?? 1, ox = view.ox ?? 0, oy = view.oy ?? 0;
-    const ctx = canvas.getContext("2d");
-    const cols = materialColors(st), N = cols.length;
-    const css = (c) => `rgb(${c.map((v) => v.toFixed(1)).join(",")})`;
-    const u = Math.min(W, H) / 1080, S = st.size * u; // S: shape scale in wallpaper px
-    const rng = mulberry32(st.seed * 9973 + 17);
-    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = "none"; ctx.globalAlpha = 1;
-
-    if (st.shape === "manchas") {
-      // Smooth random field, cut into N equal-area bands (topographic look), with anti-aliased edges.
-      const waves = [];
-      for (let i = 0; i < 7; i++) {
-        const a = rng() * Math.PI * 2, lam = S * 26 * (0.6 + rng() * 0.9);
-        waves.push([Math.cos(a) * 2 * Math.PI / lam, Math.sin(a) * 2 * Math.PI / lam, rng() * 6.283, 1 / (1 + i * 0.35)]);
-      }
-      const wl = S * 30, wa = S * 7, p1 = rng() * 6.283, p2 = rng() * 6.283;
-      const field = (X, Y) => {
-        const x = X + wa * Math.sin(Y / wl + p1), y = Y + wa * Math.sin(X / wl + p2);
-        let f = 0; for (const [fx, fy, ph, am] of waves) f += am * Math.sin(x * fx + y * fy + ph);
-        return f;
-      };
-      const samples = [];
-      for (let j = 0; j < 72; j++) for (let i = 0; i < 72; i++) samples.push(field((i + 0.5) / 72 * W, (j + 0.5) / 72 * H));
-      samples.sort((a, b) => a - b);
-      const th = []; for (let i = 1; i < N; i++) th.push(samples[Math.floor(i / N * samples.length)]);
-      const w = canvas.width, h = canvas.height;
-      const img = ctx.createImageData(w, h), d = img.data;
-      const row = (py) => { const r = new Float32Array(w + 1), Y = oy + (py + 0.5) / k; for (let px = 0; px <= w; px++) r[px] = field(ox + (px + 0.5) / k, Y); return r; };
-      let cur = row(0);
-      for (let py = 0; py < h; py++) {
-        const nxt = row(py + 1);
-        for (let px = 0; px < w; px++) {
-          const f = cur[px], g = Math.hypot(cur[px + 1] - f, nxt[px] - f) + 1e-9;
-          let L = 0; while (L < N - 1 && f >= th[L]) L++;
-          let c = cols[L];
-          if (L > 0) { const dl = (f - th[L - 1]) / g; if (dl < 0.5) c = mix(cols[L - 1], c, dl + 0.5); }
-          if (L < N - 1) { const dh = (th[L] - f) / g; if (dh < 0.5) c = mix(cols[L + 1], c, dh + 0.5); }
-          const o = (py * w + px) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
-        }
-        cur = nxt;
-      }
-      ctx.putImageData(img, 0, 0);
-    } else {
-      ctx.setTransform(k, 0, 0, k, -ox * k, -oy * k);
-      ctx.fillStyle = css(cols[0]); ctx.fillRect(0, 0, W, H);
-      if (st.shape === "escalones") {
-        // Diagonal bands that climb to the right and drop at regular steps, with rounded corners.
-        const P = S * 22, s = 0.55, dStep = 0.4 * s * P, net = s - dStep / P, e = dStep * 0.08;
-        const bh = (H + net * W) * 1.08 / N, rr = Math.min(dStep * 0.3, bh * 0.25);
-        const phase = -rng() * P;
-        for (let i = 1; i < N; i++) {
-          const Y0 = H / 2 + net * (W / 2) - (H + net * W) * 0.54 + i * bh; // boundary height at x = 0
-          const kMin = Math.floor((-P - phase) / P) - 1, kMax = Math.ceil((W + P - phase) / P) + 1;
-          const yStart = (kk) => Y0 - (kk * P + phase) * s + (kk) * dStep - dStep * (phase / P);
-          ctx.beginPath();
-          ctx.moveTo(kMin * P + phase, yStart(kMin));
-          for (let kk = kMin; kk < kMax; kk++) {
-            const bx = (kk + 1) * P + phase, by = yStart(kk) - s * P;
-            const cx = bx + e, cy = yStart(kk + 1);
-            const nx = (kk + 2) * P + phase, ny = yStart(kk + 1) - s * P;
-            ctx.arcTo(bx, by, cx, cy, rr);
-            ctx.arcTo(cx, cy, nx, ny, rr);
-          }
-          ctx.lineTo(W + 2 * P, H + 2 * P + H); ctx.lineTo(-2 * P, H + 2 * P + H); ctx.closePath();
-          ctx.fillStyle = css(cols[i]); ctx.fill();
-        }
-      } else if (st.shape === "bauhaus") {
-        // Tile grid: each cell gets a background and one geometric motif, Bauhaus poster style.
-        const g = S * 9, acc = cols.length > 2 ? cols.slice(1) : cols, TAU = Math.PI * 2;
-        const pick = (r, not) => { let c, t = 0; do { c = acc[Math.floor(r() * acc.length)]; } while (c === not && ++t < 8); return c; };
-        for (let j = 0; j * g < H; j++) for (let i = 0; i * g < W; i++) {
-          const r = mulberry32(st.seed * 131 + i * 7919 + j * 104729);
-          const bg = pick(r), fg = pick(r, bg), m = Math.floor(r() * 6), rot = Math.floor(r() * 4);
-          ctx.fillStyle = css(bg); ctx.fillRect(i * g, j * g, g + 0.6, g + 0.6);
-          ctx.save(); ctx.translate(i * g + g / 2, j * g + g / 2); ctx.rotate(rot * Math.PI / 2); ctx.translate(-g / 2, -g / 2);
-          ctx.beginPath(); ctx.fillStyle = css(fg);
-          if (m === 0) { ctx.moveTo(0, 0); ctx.arc(0, 0, g, 0, Math.PI / 2); }
-          else if (m === 1) { ctx.arc(g / 2, 0, g / 2, 0, Math.PI); }
-          else if (m === 2) { ctx.arc(g / 2, g / 2, g * 0.36, 0, TAU); }
-          else if (m === 3) { ctx.moveTo(0, 0); ctx.lineTo(g, 0); ctx.lineTo(0, g); ctx.closePath(); }
-          else if (m === 4) { ctx.moveTo(0, 0); ctx.arc(0, 0, g / 2, 0, Math.PI / 2); ctx.moveTo(g, g); ctx.arc(g, g, g / 2, Math.PI, Math.PI * 1.5); }
-          else { for (let b = 0; b < 3; b++) ctx.rect(0, b * g / 3 + g / 12, g, g / 6); }
-          ctx.fill();
-          if (m === 2 && r() < 0.5) { ctx.beginPath(); ctx.fillStyle = css(bg); ctx.arc(g / 2, g / 2, g * 0.15, 0, TAU); ctx.fill(); }
-          ctx.restore();
-        }
-      } else if (st.shape === "arcoiris") {
-        // Rows of 70s rainbow arches, every other row shifted half a tile.
-        const R = S * 5.5, n = Math.max(2, Math.min(N - 1, 6)), bw = R / (n + 0.7);
-        for (let j = 0; (j - 1) * R < H; j++) {
-          const yb = (j + 1) * R, off = (j & 1) ? R : 0;
-          for (let x = -2 * R + off; x < W + 2 * R; x += 2 * R) {
-            for (let q = 0; q <= n; q++) {
-              ctx.beginPath(); ctx.arc(x + R, yb, R - q * bw, Math.PI, 0); ctx.closePath();
-              ctx.fillStyle = css(q === n ? cols[0] : cols[1 + (q % (N - 1))]); ctx.fill();
-            }
-          }
-        }
-      } else if (st.shape === "pastillas") {
-        // Diagonal lanes of rounded capsules with random lengths.
-        const h = S * 4.2, gap = h * 0.38, D = Math.hypot(W, H);
-        const capsule = (x, y, len) => { const rr = h / 2; ctx.moveTo(x + rr, y); ctx.lineTo(x + len - rr, y); ctx.arc(x + len - rr, y + rr, rr, -Math.PI / 2, Math.PI / 2); ctx.lineTo(x + rr, y + h); ctx.arc(x + rr, y + rr, rr, Math.PI / 2, Math.PI * 1.5); ctx.closePath(); };
-        ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-Math.PI / 6);
-        let lane = 0;
-        for (let y = -D / 2 - h; y < D / 2 + h; y += h + gap, lane++) {
-          const r = mulberry32(st.seed * 977 + lane * 15485863);
-          let x = -D / 2 - r() * h * 6;
-          while (x < D / 2 + h) {
-            const len = h * (1.5 + r() * 6);
-            ctx.beginPath(); capsule(x, y, len);
-            ctx.fillStyle = css(cols[1 + Math.floor(r() * (N - 1))]); ctx.fill();
-            x += len + gap;
-          }
-        }
-        ctx.restore();
-      } else if (st.shape === "feston") {
-        // Concentric scalloped "cookie" shapes, each layer twisted a little.
-        const cx = W * (0.25 + rng() * 0.5), cy = H * (0.25 + rng() * 0.5);
-        const R = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) * 1.08, amp = S * 1.8;
-        for (let i = 1; i < N; i++) {
-          const rad = R * (1 - (i - 1) / N) * 0.97, lobes = Math.max(6, Math.round(rad / (S * 7))), ph = i * 0.9;
-          ctx.beginPath();
-          const steps = Math.max(360, lobes * 24);
-          for (let a = 0; a <= steps; a++) {
-            const t = a / steps * Math.PI * 2, rr = rad + amp * Math.cos(t * lobes + ph);
-            a ? ctx.lineTo(cx + rr * Math.cos(t), cy + rr * Math.sin(t)) : ctx.moveTo(cx + rr * Math.cos(t), cy + rr * Math.sin(t));
-          }
-          ctx.closePath(); ctx.fillStyle = css(cols[i]); ctx.fill();
-        }
-      } else if (st.shape === "sol") {
-        // Retro sunburst: alternating rays plus a ringed sun.
-        const cx = W * (0.15 + rng() * 0.7), cy = H * (0.7 + rng() * 0.25), R = Math.hypot(W, H) * 1.3;
-        const rays = 32, a0 = rng();
-        ctx.beginPath(); ctx.fillStyle = css(cols[1]);
-        for (let i = 0; i < rays; i += 2) {
-          ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, (i + a0) / rays * Math.PI * 2, (i + 1 + a0) / rays * Math.PI * 2); ctx.closePath();
-        }
-        ctx.fill();
-        const rings = Math.max(1, N - 2), R0 = S * 22;
-        for (let q = 0; q < rings; q++) {
-          ctx.beginPath(); ctx.arc(cx, cy, R0 * (1 - q / (rings + 0.4)), 0, Math.PI * 2);
-          ctx.fillStyle = css(cols[2 + q] || cols[N - 1]); ctx.fill();
-        }
-      } else if (st.shape === "burbujas") {
-        // Overlapping ringed discs, big ones underneath.
-        const count = Math.max(12, Math.round(W * H / (S * S * 230)));
-        const list = [];
-        for (let i = 0; i < count; i++) list.push([rng() * W, rng() * H, S * (2 + Math.pow(rng(), 2.2) * 26), Math.floor(rng() * (N - 1))]);
-        list.sort((a, b) => b[2] - a[2]);
-        for (const [x, y, r0, ci] of list)
-          for (let q = 0; q < 3; q++) {
-            ctx.beginPath(); ctx.arc(x, y, r0 * (1 - q * 0.3), 0, Math.PI * 2);
-            ctx.fillStyle = css(cols[1 + (ci + q) % (N - 1)]); ctx.fill();
-          }
-      } else if (st.shape === "cintas") {
-        // Thick rounded ribbons that ripple in a slow diagonal wave.
-        const D = Math.hypot(W, H), sp = S * 7, lam = S * (30 + rng() * 20), amp = S * 3.5;
-        ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-0.35); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = sp * 0.62;
-        let i = 0;
-        for (let y = -D / 2; y < D / 2 + sp; y += sp, i++) {
-          ctx.beginPath();
-          let first = true;
-          for (let x = -D / 2; x <= D / 2; x += S) {
-            const yy = y + amp * Math.sin(x / lam * Math.PI * 2 + i * 0.55);
-            if (first) { ctx.moveTo(x, yy); first = false; } else ctx.lineTo(x, yy);
-          }
-          ctx.strokeStyle = css(cols[1 + (i % (N - 1))]); ctx.stroke();
-        }
-        ctx.restore();
-      } else if (st.shape === "origami") {
-        // Low-poly facets coloured along a diagonal sweep of the palette.
-        const g = S * 9, nx = Math.ceil(W / g) + 2, ny = Math.ceil(H / g) + 2, pts = [];
-        for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) pts.push([(i - 0.5 + (rng() - 0.5) * 0.75) * g, (j - 0.5 + (rng() - 0.5) * 0.75) * g]);
-        const P = (i, j) => pts[j * nx + i];
-        const tri = (a, b, c) => {
-          const x = (a[0] + b[0] + c[0]) / 3, y = (a[1] + b[1] + c[1]) / 3;
-          let t = (x / W * 0.4 + y / H * 0.6) * (N - 1) + (rng() - 0.5) * 0.9;
-          t = Math.max(0, Math.min(N - 1, t)); const f = Math.floor(t);
-          const col = css(mix(cols[f], cols[Math.min(N - 1, f + 1)], t - f));
-          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.closePath();
-          ctx.fillStyle = col; ctx.strokeStyle = col; ctx.fill(); ctx.stroke();
-        };
-        ctx.lineWidth = 1 / k; ctx.lineJoin = "round";
-        for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
-          const a = P(i, j), b = P(i + 1, j), c = P(i, j + 1), d = P(i + 1, j + 1);
-          if (rng() < 0.5) { tri(a, b, d); tri(a, d, c); } else { tri(a, b, c); tri(b, d, c); }
-        }
-      } else if (st.shape === "colinas") {
-        // Layered rolling hills, each with its own pair of sine waves.
-        const step = Math.max(2, W / 240);
-        for (let i = 1; i < N; i++) {
-          const base = H * (0.08 + 0.92 * i / N), amp = H / N * 0.75;
-          const l1 = S * (18 + rng() * 20), l2 = S * (7 + rng() * 8), q1 = rng() * 6.283, q2 = rng() * 6.283;
-          ctx.beginPath(); ctx.moveTo(-step, H + 10);
-          for (let x = -step; x <= W + step; x += step) ctx.lineTo(x, base + amp * (Math.sin(x / l1 + q1) * 0.75 + Math.sin(x / l2 + q2) * 0.25));
-          ctx.lineTo(W + step, H + 10); ctx.closePath();
-          ctx.fillStyle = css(cols[i]); ctx.fill();
-        }
-      } else { // arcos: wobbly concentric rings from a corner
-        const cx = -W * 0.08, cy = H * 1.08, R = Math.hypot(W * 1.15, H * 1.15);
-        const lobes = 3 + Math.floor(rng() * 4), wob = S * 2.2;
-        for (let i = 1; i < N; i++) {
-          const rad = R * (1 - i / N), ph = rng() * 6.283;
-          ctx.beginPath();
-          for (let a = 0; a <= 360; a += 2) {
-            const t = a * Math.PI / 180, rr = rad + wob * Math.sin(t * lobes + ph);
-            const x = cx + rr * Math.cos(t), y = cy + rr * Math.sin(t);
-            a ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-          }
-          ctx.closePath(); ctx.fillStyle = css(cols[i]); ctx.fill();
-        }
-      }
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-    }
-    addGrain(ctx, canvas.width, canvas.height, st.grain, view.grainScale ?? 1);
-  }
-
-  // Monochrome film grain (std up to ~6.5 levels) plus a ±0.5 dither that prevents gradient banding.
-  function addGrain(ctx, w, h, amount, scale) {
-    const std = (amount / 100) * 6.5 * scale;
-    const img = ctx.getImageData(0, 0, w, h), d = img.data;
-    let seed = 0x9e3779b9;
-    const rnd = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) / 4294967296; };
-    const k = std / 0.408;
-    for (let i = 0; i < d.length; i += 4) {
-      const n = (rnd() + rnd() - 1) * k + (rnd() - 0.5);
-      d[i] += n; d[i + 1] += n; d[i + 2] += n * 1.12;
-    }
-    ctx.putImageData(img, 0, 0);
-  }
-
-  // ---------- preview ----------
-  const preview = $("preview"), device = $("device"), viewport = $("viewport");
-
-  function fitPreview() {
-    const { w, h } = dims();
-    const pad = 16;
-    const narrow = matchMedia("(max-width: 900px)").matches;
-    const maxH = narrow ? Math.max(260, innerHeight * 0.58) : Math.min(innerHeight * 0.72, 780);
-    viewport.style.height = Math.round(Math.min(maxH, viewport.clientWidth * h / w + pad)) + "px";
-    const box = viewport.getBoundingClientRect();
-    const scale = Math.min((box.width - pad) / w, (box.height - pad) / h);
-    const cssW = Math.max(60, Math.floor(w * scale)), cssH = Math.max(60, Math.floor(h * scale));
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    preview.style.width = cssW + "px"; preview.style.height = cssH + "px";
-    preview.width = Math.round(cssW * dpr); preview.height = Math.round(cssH * dpr);
-    const wide = w > h;
-    device.classList.toggle("is-wide", wide);
-    device.classList.toggle("is-detail", state.view === "detail");
-    if (!wide) {
-      device.style.borderRadius = Math.round(cssW * 0.14) + "px";
-      preview.style.borderRadius = Math.round(cssW * 0.12) + "px";
-    } else { device.style.borderRadius = ""; preview.style.borderRadius = ""; }
-    return { w, h };
-  }
-
-  function previewView(w, h) {
-    if (state.view === "detail") {
-      // 1 wallpaper pixel per device pixel: the real size on this screen.
-      const dpr = window.devicePixelRatio || 1;
-      const k = Math.min(dpr, 2) / dpr; // canvas px per wallpaper px
-      const vw = preview.width / k, vh = preview.height / k;
-      const ox = Math.max(0, Math.min(w - vw, pan.x * w - vw / 2));
-      const oy = Math.max(0, Math.min(h - vh, pan.y * h - vh / 2));
-      return { W: w, H: h, k, ox, oy, grainScale: 1 };
-    }
-    const k = preview.width / w;
-    return { W: w, H: h, k, grainScale: Math.min(1, Math.sqrt(k) * 1.2) };
-  }
-
-  let pending = 0;
-  function draw(thumbs = true) {
-    cancelAnimationFrame(pending);
-    pending = requestAnimationFrame(() => {
-      const { w, h } = fitPreview();
-      render(preview, state, previewView(w, h));
-      const d = dims();
-      $("meta").textContent = `${d.w} × ${d.h} px · ${d.name}`;
-      $("badge").hidden = state.view !== "detail";
-      if (thumbs) drawThumbs();
-      persist();
-    });
-  }
-
-  function drawThumbs() {
-    if (state.style === "material") {
-      document.querySelectorAll("#shapes canvas").forEach((cv) => {
-        render(cv, Object.assign({}, state, { shape: cv.dataset.shape }), { W: 1080, H: 1080, k: cv.width / 1080, grainScale: 0.4 });
-      });
-      return;
-    }
-    const st = Object.assign({}, state, { grad: 0, bottomAuto: true });
-    document.querySelectorAll(".pat canvas").forEach((cv) => {
-      // A 1080×1080 patch zoomed in so each pattern reads clearly at thumbnail size.
-      const k = cv.width / 130;
-      render(cv, Object.assign({}, st, { pattern: cv.dataset.pattern }), { W: 1080, H: 1080, k, ox: 400, oy: 400, grainScale: 0.4 });
-    });
-  }
-
-  // Drag to pan in detail view.
-  let drag = null;
-  preview.addEventListener("pointerdown", (e) => {
-    if (state.view !== "detail") return;
-    drag = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
-    preview.setPointerCapture(e.pointerId);
-  });
-  preview.addEventListener("pointermove", (e) => {
-    if (!drag) return;
-    const { w, h } = dims();
-    const dpr = window.devicePixelRatio || 1;
-    pan.x = Math.max(0, Math.min(1, drag.px - (e.clientX - drag.x) * dpr / w));
-    pan.y = Math.max(0, Math.min(1, drag.py - (e.clientY - drag.y) * dpr / h));
-    draw(false);
-  });
-  const endDrag = () => { drag = null; };
-  preview.addEventListener("pointerup", endDrag);
-  preview.addEventListener("pointercancel", endDrag);
-
-  // ---------- UI ----------
-  function buildUI() {
-    const det = $("detected");
-    det.append("Detectada: ");
-    const b = document.createElement("b"); b.textContent = `${detected.w} × ${detected.h} px`; det.append(b);
-    det.append(` (${detected.cw}×${detected.ch} pt @${+detected.dpr.toFixed(2)}x)`);
-
-    const sel = $("preset");
-    const groups = { auto: null, phone: "Teléfonos", tablet: "Tabletas", mac: "Mac", monitor: "Monitores", custom: null };
-    const kind = (p) => p.id === "auto" ? "auto" : p.id === "custom" ? "custom" : /^ip(ad)/.test(p.id) ? "tablet"
-      : /^(mb|imac)/.test(p.id) ? "mac" : /^(fhd|qhd|uw|4k|5k)$/.test(p.id) ? "monitor" : "phone";
-    const og = {};
-    PRESETS.forEach((p) => {
-      const o = document.createElement("option");
-      o.value = p.id;
-      o.textContent = p.id === "auto" ? `Esta pantalla — ${detected.w} × ${detected.h}` : p.w ? `${p.name} — ${p.w} × ${p.h}` : p.name;
-      const kd = kind(p);
-      if (groups[kd]) {
-        if (!og[kd]) { og[kd] = document.createElement("optgroup"); og[kd].label = groups[kd]; sel.append(og[kd]); }
-        og[kd].append(o);
-      } else sel.append(o);
-    });
-
-    const sw = $("swatches");
-    SWATCHES.forEach(([name, hex]) => {
-      const btn = document.createElement("button");
-      btn.type = "button"; btn.className = "swatch"; btn.style.background = hex;
-      btn.title = name; btn.setAttribute("aria-label", name); btn.dataset.hex = hex;
-      btn.addEventListener("click", () => { state.base = hex; syncInputs(); draw(); });
-      sw.append(btn);
-    });
-
-    const shp = $("shapes");
-    SHAPES.forEach(([id, name]) => {
-      const lab = document.createElement("label"); lab.className = "pat";
-      const inp = document.createElement("input"); inp.type = "radio"; inp.name = "shape"; inp.value = id; inp.id = "shape-" + id;
-      const cv = document.createElement("canvas"); cv.width = 168; cv.height = 168; cv.dataset.shape = id;
-      const sp = document.createElement("span"); sp.textContent = name;
-      inp.addEventListener("change", () => { state.shape = id; draw(false); });
-      lab.append(inp, cv, sp); shp.append(lab);
-    });
-    const pl = $("palettes");
-    PALETTES.forEach(([id, name]) => {
-      const lab = document.createElement("label"); lab.className = "pal";
-      const inp = document.createElement("input"); inp.type = "radio"; inp.name = "palette"; inp.value = id; inp.id = "pal-" + id;
-      const strip = document.createElement("div"); strip.className = "strip"; strip.dataset.palette = id;
-      const sp = document.createElement("span"); sp.textContent = name;
-      inp.addEventListener("change", () => { state.palette = id; state.layers = paletteLength(id); syncInputs(); draw(); });
-      lab.append(inp, strip, sp); pl.append(lab);
-    });
-
-    const pats = $("patterns");
-    PATTERNS.forEach(([id, name]) => {
-      const lab = document.createElement("label"); lab.className = "pat";
-      const inp = document.createElement("input"); inp.type = "radio"; inp.name = "pattern"; inp.value = id; inp.id = "pat-" + id;
-      const cv = document.createElement("canvas"); cv.width = 168; cv.height = 168; cv.dataset.pattern = id;
-      const sp = document.createElement("span"); sp.textContent = name;
-      inp.addEventListener("change", () => { state.pattern = id; draw(false); });
-      lab.append(inp, cv, sp); pats.append(lab);
-    });
-  }
-
-  const paletteLength = (id) => { const p = PALETTES.find(([x]) => x === id); return p && p[2] ? p[2].length : 7; };
-  function paintStrips() {
-    document.querySelectorAll(".pal .strip").forEach((el) => {
-      const cols = materialColors(Object.assign({}, state, { palette: el.dataset.palette, layers: 0 }));
-      el.replaceChildren(...cols.map((c) => { const i = document.createElement("i"); i.style.background = rgbToHex(c); return i; }));
-    });
-  }
-
-  const sliders = {
-    layers: (v) => `${v}`,
-    size: (v) => `${(+v).toFixed(1)} px`, dotSize: (v) => `${v}%`, contrast: (v) => `${v}%`, grad: (v) => `${v}%`,
-    grain: (v) => `${v}%`, soft: (v) => (+v === 0 ? "nítido" : `${v}%`),
-  };
-
-  function syncInputs() {
-    const d = dims(), pal = palette(Object.assign({}, state, { contrast: 100 }));
-    $("preset").value = state.preset;
-    $("customDims").hidden = state.preset !== "custom";
-    $("cw").value = d.w; $("ch").value = d.h;
-    $("viewFull").checked = state.view !== "detail";
-    $("viewDetail").checked = state.view === "detail";
-    $("themeDark").checked = state.theme === "dark";
-    $("themeLight").checked = state.theme === "light";
-    $("base").value = state.base;
-    $("bottomAuto").checked = state.bottomAuto;
-    $("bottom").disabled = state.bottomAuto;
-    $("bottom").value = state.bottomAuto ? rgbToHex(pal.bottomAutoColor) : state.bottom;
-    $("dotAuto").checked = state.dotAuto;
-    $("dot").disabled = state.dotAuto;
-    $("dot").value = state.dotAuto ? rgbToHex(pal.dot) : state.dot;
-    document.querySelectorAll(".swatch").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.hex === state.base)));
-    const pi = $("pat-" + state.pattern); if (pi) pi.checked = true;
-    const mat = state.style === "material";
-    $("stylePattern").checked = !mat; $("styleMaterial").checked = mat;
-    document.querySelectorAll("[data-only]").forEach((el) => { el.hidden = el.dataset.only !== state.style; });
-    $("colorGroup").hidden = mat && state.palette !== "mono";
-    const si = $("shape-" + state.shape); if (si) si.checked = true;
-    const pa = $("pal-" + state.palette); if (pa) pa.checked = true;
-    paintStrips();
-    Object.keys(sliders).forEach((k) => { $(k).value = state[k]; $(k + "Out").textContent = sliders[k](state[k]); });
-  }
-
-  function wire() {
-    $("preset").addEventListener("change", (e) => {
-      const d = dims();
-      if (e.target.value === "custom") { state.cw = d.w; state.ch = d.h; }
-      state.preset = e.target.value; state.rotated = false; syncInputs(); draw(false);
-    });
-    ["cw", "ch"].forEach((id) => $(id).addEventListener("input", (e) => {
-      const v = parseInt(e.target.value, 10);
-      if (v >= 200 && v <= MAX_SIDE) { state[id] = v; draw(false); }
-    }));
-    $("rotate").addEventListener("click", () => {
-      if (state.preset === "custom") [state.cw, state.ch] = [state.ch, state.cw];
-      else state.rotated = !state.rotated;
-      syncInputs(); draw(false);
-    });
-    document.querySelectorAll('input[name="style"]').forEach((r) => r.addEventListener("change", (e) => { state.style = e.target.value; syncInputs(); draw(); }));
-    $("newShape").addEventListener("click", () => { state.seed = (state.seed * 31 + 7) % 100003; draw(); });
-    document.querySelectorAll('input[name="view"]').forEach((r) => r.addEventListener("change", (e) => { state.view = e.target.value; draw(false); }));
-    document.querySelectorAll('input[name="theme"]').forEach((r) => r.addEventListener("change", (e) => { state.theme = e.target.value; syncInputs(); draw(); }));
-    $("base").addEventListener("input", (e) => { state.base = e.target.value; syncInputs(); draw(); });
-    $("bottomAuto").addEventListener("change", (e) => {
-      if (!e.target.checked) state.bottom = rgbToHex(palette(state).bottomAutoColor);
-      state.bottomAuto = e.target.checked; syncInputs(); draw();
-    });
-    $("bottom").addEventListener("input", (e) => { state.bottom = e.target.value; draw(false); });
-    $("dotAuto").addEventListener("change", (e) => {
-      if (!e.target.checked) state.dot = rgbToHex(palette(Object.assign({}, state, { contrast: 100 })).dot);
-      state.dotAuto = e.target.checked; syncInputs(); draw();
-    });
-    $("dot").addEventListener("input", (e) => { state.dot = e.target.value; draw(); });
-    Object.keys(sliders).forEach((k) => $(k).addEventListener("input", (e) => {
-      state[k] = +e.target.value; $(k + "Out").textContent = sliders[k](state[k]);
-      draw(k !== "grad");
-    }));
-    $("reset").addEventListener("click", () => { Object.assign(state, ORIGINAL, { style: "pattern" }); syncInputs(); draw(); setStatus("Ajustes del fondo original restaurados."); });
-    $("random").addEventListener("click", () => {
-      const pick = (a) => a[Math.floor(Math.random() * a.length)];
-      const material = Math.random() < 0.5;
-      Object.assign(state, {
-        style: material ? "material" : "pattern", shape: pick(SHAPES)[0], seed: Math.floor(Math.random() * 100000),
-        base: pick(SWATCHES)[1], pattern: pick(PATTERNS)[0], theme: Math.random() < 0.7 ? "dark" : "light",
-        size: Math.round(14 + Math.random() * 26), dotSize: Math.round(25 + Math.random() * 30),
-        contrast: Math.round(60 + Math.random() * 40), bottomAuto: true, dotAuto: true,
-      });
-      if (material) { state.palette = pick(PALETTES)[0]; state.layers = paletteLength(state.palette); state.size = Math.round(15 + Math.random() * 15); }
-      syncInputs(); draw();
-    });
-    $("save").addEventListener("click", save);
-    $("sheetClose").addEventListener("click", closeSheet);
-    $("sheet").addEventListener("click", (e) => { if (e.target.id === "sheet") closeSheet(); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
-    $("panel").addEventListener("submit", (e) => e.preventDefault());
-    if ("ResizeObserver" in window) new ResizeObserver(() => draw(false)).observe(document.querySelector(".stage"));
-    else window.addEventListener("resize", () => draw(false));
-  }
-
-  const setStatus = (t) => { $("status").textContent = t; };
-
-  // ---------- export ----------
-  let sheetUrl = null;
-  const isTouch = (navigator.maxTouchPoints || 0) > 0 && matchMedia("(pointer: coarse)").matches;
-
-  async function save() {
-    const btn = $("save");
-    const { w, h } = dims();
-    btn.disabled = true; setStatus(`Generando ${w} × ${h} px…`);
-    await new Promise((r) => setTimeout(r, 30));
-    try {
-      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
-      render(cv, state, { W: w, H: h });
-      const blob = await new Promise((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/png"));
-      const filename = `tapiz-${state.style === "material" ? state.shape + "-" + state.palette : state.pattern}-${state.theme === "dark" ? "oscuro" : "claro"}-${w}x${h}.png`;
-      if (isTouch && navigator.canShare) {
-        const file = new File([blob], filename, { type: "image/png" });
-        if (navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file] });
-            setStatus("Listo. Elige «Guardar imagen» para llevarla a Fotos.");
-            return;
-          } catch (err) {
-            if (err && err.name === "AbortError") { setStatus("Cancelado."); return; }
-          }
-        }
-        openSheet(blob);
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-      setStatus(`Descargado: ${filename}`);
-    } catch (e) {
-      setStatus("No se pudo generar la imagen. Prueba con una resolución menor.");
-    } finally { btn.disabled = false; }
-  }
-
-  function openSheet(blob) {
-    if (sheetUrl) URL.revokeObjectURL(sheetUrl);
-    sheetUrl = URL.createObjectURL(blob);
-    $("sheetImg").src = sheetUrl;
-    $("sheet").hidden = false;
-    setStatus("Imagen lista: guárdala desde la vista ampliada.");
-    $("sheetClose").focus();
-  }
-  function closeSheet() { $("sheet").hidden = true; }
-
-  buildUI();
-  syncInputs();
-  wire();
-  draw();
-})();
-</script>
+<script src="js/data.js"></script>
+<script src="js/render.js"></script>
+<script src="js/art.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
