@@ -14,7 +14,7 @@
 <title>Tapiz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap">
-<link rel="stylesheet" href="styles.css?v=9">
+<link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
 <div class="app">
@@ -64,6 +64,10 @@
         <fieldset class="group" data-tab="design">
           <legend>Estilo</legend>
           <div class="styles" id="styles" role="radiogroup" aria-label="Estilo"></div>
+          <div class="row">
+            <button type="button" class="ghost small" id="newShape2" data-only="material abstract gradient">Nueva variación</button>
+            <button type="button" class="ghost small" id="reset">Restaurar fondo original</button>
+          </div>
         </fieldset>
         <fieldset class="group" data-tab="design" data-only="pattern">
           <legend>Patrón</legend>
@@ -156,8 +160,8 @@
 
         <div class="actions">
           <button type="button" class="primary" id="save">Guardar PNG</button>
+          <button type="button" class="ghost" id="newShape3" title="Genera otra versión del mismo diseño">Variar</button>
           <button type="button" class="ghost" id="random" title="Combinación aleatoria">Sorpréndeme</button>
-          <button type="button" class="ghost" id="reset" title="Volver al fondo original">Original</button>
         </div>
         <p class="status" id="status" aria-live="polite"></p>
       </form>
@@ -173,9 +177,10 @@
   </div>
 </div>
 
-<script src="js/data.js?v=9"></script>
-<script src="js/render.js?v=9"></script>
-<script src="js/art.js?v=9"></script>
-<script src="js/app.js?v=9"></script>
+<script src="js/data.js?v=10"></script>
+<script src="js/noise.js?v=10"></script>
+<script src="js/render.js?v=10"></script>
+<script src="js/art.js?v=10"></script>
+<script src="js/app.js?v=10"></script>
 </body>
 </html>

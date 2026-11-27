@@ -9,7 +9,7 @@
   // ---------- state ----------
   let state = Object.assign({
     preset: "auto", rotated: false, cw: 1320, ch: 2868, view: "full", tab: "design", mock: false,
-    style: "pattern", shape: "feston", abstract: "liquido", gradient: "malla",
+    style: "pattern", shape: "bauhaus", abstract: "liquido", gradient: "malla",
     palette: "costa", lastPalette: "costa", layers: 10, seed: 7, custom: DEFAULT_CUSTOM.slice(),
   }, ORIGINAL);
   try {
@@ -26,7 +26,7 @@
     const has = (list, id) => list.some(([x]) => x === id);
     if (!has(STYLES, state.style)) state.style = "pattern";
     if (!has(PATTERNS, state.pattern)) state.pattern = "perforado";
-    if (!has(SHAPES, state.shape)) state.shape = "feston";
+    if (!has(SHAPES, state.shape)) state.shape = "bauhaus";
     if (!has(ABSTRACTS, state.abstract)) state.abstract = "liquido";
     if (!has(GRADIENTS, state.gradient)) state.gradient = "malla";
     if (!has(PALETTES, state.palette)) state.palette = "costa";
@@ -294,6 +294,8 @@
     check("abstract-" + state.abstract); check("gradient-" + state.gradient); check("pal-" + state.palette);
     Object.keys(sliders).forEach((k) => { $(k).value = state[k]; $(k + "Out").textContent = sliders[k](state[k]); });
     $("seedOut").textContent = `Variación n.º ${state.seed}`;
+    $("newShape3").textContent = state.style === "pattern" ? "Otro" : "Variar";
+    $("newShape3").title = state.style === "pattern" ? "Combinación aleatoria de patrón" : "Genera otra versión del mismo diseño";
     paintStrips();
     renderFavs();
   }
@@ -334,7 +336,14 @@
       state[k] = +e.target.value; $(k + "Out").textContent = sliders[k](state[k]);
       draw(k !== "grad" && k !== "grain");
     }));
-    $("newShape").addEventListener("click", () => { state.seed = (state.seed * 31 + 7) % 100003; syncInputs(); draw(); });
+    const vary = () => {
+      if (state.style === "pattern") {
+        const pick = (l) => l[Math.floor(Math.random() * l.length)];
+        state.pattern = pick(PATTERNS)[0]; state.base = pick(SWATCHES)[1]; syncInputs(); draw(); return;
+      }
+      state.seed = (state.seed * 31 + 7) % 100003; syncInputs(); draw();
+    };
+    ["newShape", "newShape2", "newShape3"].forEach((id) => $(id).addEventListener("click", vary));
     $("customAdd").addEventListener("click", () => {
       const last = hexToRgb(state.custom[state.custom.length - 1]);
       state.custom.push(rgbToHex(mix(last, [255, 255, 255], 0.35)));

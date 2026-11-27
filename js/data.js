@@ -40,9 +40,8 @@ const SWATCHES = [
   ["Pizarra", "#1f2a33"], ["Grafito", "#24262c"], ["Carbón", "#121214"], ["Arena", "#6e6450"],
 ];
 const SHAPES = [
-  ["manchas", "Topografía"], ["feston", "Festón"], ["bauhaus", "Bauhaus"], ["arcoiris", "Arcoíris"],
-  ["pastillas", "Pastillas"], ["escalones", "Escalones"], ["cintas", "Cintas"], ["origami", "Origami"],
-  ["burbujas", "Burbujas"], ["sol", "Sol"], ["colinas", "Colinas"], ["arcos", "Arcos"],
+  ["bauhaus", "Bauhaus"], ["pastillas", "Pastillas"], ["bloques", "Bloques"], ["truchet", "Truchet"],
+  ["dianas", "Dianas"], ["tejido", "Tejido"], ["colcha", "Colcha"], ["abanicos", "Abanicos"],
 ];
 const PALETTES = [
   ["costa", "Costa", ["#14233f", "#29385f", "#e8632c", "#f49560", "#f5d3b1", "#dab284", "#93b1cc", "#6096c2", "#115e9b", "#023060"]],
@@ -79,12 +78,12 @@ const PALETTES = [
 ];
 const STYLES = [["pattern", "Patrón"], ["material", "Material"], ["abstract", "Abstracto"], ["gradient", "Degradado"]];
 const ABSTRACTS = [
-  ["liquido", "Líquido"], ["cristal", "Cristal"], ["trazos", "Trazos"],
+  ["liquido", "Líquido"], ["papel", "Papel"], ["trazos", "Trazos"],
   ["vitral", "Vitral"], ["memphis", "Memphis"], ["pulsar", "Pulsar"],
 ];
 const GRADIENTS = [
   ["malla", "Malla"], ["aurora", "Aurora"], ["orbes", "Orbes"],
-  ["holo", "Holográfico"], ["lineal", "Lineal"], ["conico", "Cónico"],
+  ["seda", "Seda"], ["horizonte", "Horizonte"], ["lineal", "Lineal"],
 ];
 const DESIGNS = { material: SHAPES, abstract: ABSTRACTS, gradient: GRADIENTS };
 const DEFAULT_CUSTOM = ["#1b1f3b", "#53489a", "#e85d75", "#f6a96c", "#f8e1b8", "#fdf6ec"];

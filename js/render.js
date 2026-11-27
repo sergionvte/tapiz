@@ -253,77 +253,148 @@ function renderMaterial(canvas, st, view) {
   const ctx = canvas.getContext("2d");
   const cols = materialColors(st), N = cols.length;
   const css = (c) => `rgb(${c.map((v) => v.toFixed(1)).join(",")})`;
-  const u = Math.min(W, H) / 1080, S = st.size * u; // S: shape scale in wallpaper px
+  const u = Math.min(W, H) / 1080, S = st.size * u, g = S * 9, TAU = Math.PI * 2;
   const rng = mulberry32(st.seed * 9973 + 17);
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = "none"; ctx.globalAlpha = 1;
+  const inks = N > 2 ? cols.slice(1) : cols;
+  const cellRng = (i, j) => mulberry32(st.seed * 131 + i * 7919 + j * 104729);
+  const pick = (r, not) => { let c, t = 0; do { c = inks[Math.floor(r() * inks.length)]; } while (c === not && ++t < 8); return c; };
+  const rrect = (x, y, w, h, r) => {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  };
+  // Visit grid cells that intersect the visible part of the wallpaper.
+  const vx0 = Math.max(0, ox), vy0 = Math.max(0, oy), vx1 = Math.min(W, ox + canvas.width / k), vy1 = Math.min(H, oy + canvas.height / k);
+  const eachCell = (fn) => {
+    for (let j = Math.floor(vy0 / g); j * g < vy1; j++) for (let i = Math.floor(vx0 / g); i * g < vx1; i++) fn(i * g, j * g, cellRng(i, j), i, j);
+  };
+  const clipCell = (x, y) => { ctx.save(); ctx.beginPath(); ctx.rect(x, y, g + 0.6, g + 0.6); ctx.clip(); };
 
-  if (st.shape === "manchas") {
-    // Smooth random field, cut into N equal-area bands (topographic look), with anti-aliased edges.
-    const waves = [];
-    for (let i = 0; i < 7; i++) {
-      const a = rng() * Math.PI * 2, lam = S * 26 * (0.6 + rng() * 0.9);
-      waves.push([Math.cos(a) * 2 * Math.PI / lam, Math.sin(a) * 2 * Math.PI / lam, rng() * 6.283, 1 / (1 + i * 0.35)]);
-    }
-    const wl = S * 30, wa = S * 7, p1 = rng() * 6.283, p2 = rng() * 6.283;
-    const field = (X, Y) => {
-      const x = X + wa * Math.sin(Y / wl + p1), y = Y + wa * Math.sin(X / wl + p2);
-      let f = 0; for (const [fx, fy, ph, am] of waves) f += am * Math.sin(x * fx + y * fy + ph);
-      return f;
-    };
-    const samples = [];
-    for (let j = 0; j < 72; j++) for (let i = 0; i < 72; i++) samples.push(field((i + 0.5) / 72 * W, (j + 0.5) / 72 * H));
-    samples.sort((a, b) => a - b);
-    const th = []; for (let i = 1; i < N; i++) th.push(samples[Math.floor(i / N * samples.length)]);
-    const w = canvas.width, h = canvas.height;
-    const img = ctx.createImageData(w, h), d = img.data;
-    const row = (py) => { const r = new Float32Array(w + 1), Y = oy + (py + 0.5) / k; for (let px = 0; px <= w; px++) r[px] = field(ox + (px + 0.5) / k, Y); return r; };
-    let cur = row(0);
-    for (let py = 0; py < h; py++) {
-      const nxt = row(py + 1);
-      for (let px = 0; px < w; px++) {
-        const f = cur[px], g = Math.hypot(cur[px + 1] - f, nxt[px] - f) + 1e-9;
-        let L = 0; while (L < N - 1 && f >= th[L]) L++;
-        let c = cols[L];
-        if (L > 0) { const dl = (f - th[L - 1]) / g; if (dl < 0.5) c = mix(cols[L - 1], c, dl + 0.5); }
-        if (L < N - 1) { const dh = (th[L] - f) / g; if (dh < 0.5) c = mix(cols[L + 1], c, dh + 0.5); }
-        const o = (py * w + px) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
-      }
-      cur = nxt;
-    }
-    ctx.putImageData(img, 0, 0);
-  } else {
-    ctx.setTransform(k, 0, 0, k, -ox * k, -oy * k);
-    ctx.fillStyle = css(cols[0]); ctx.fillRect(0, 0, W, H);
-    if (st.shape === "escalones") {
-      // Diagonal bands that climb to the right and drop at regular steps, with rounded corners.
-      const P = S * 22, s = 0.55, dStep = 0.4 * s * P, net = s - dStep / P, e = dStep * 0.08;
-      const bh = (H + net * W) * 1.08 / N, rr = Math.min(dStep * 0.3, bh * 0.25);
-      const phase = -rng() * P;
-      for (let i = 1; i < N; i++) {
-        const Y0 = H / 2 + net * (W / 2) - (H + net * W) * 0.54 + i * bh; // boundary height at x = 0
-        const kMin = Math.floor((-P - phase) / P) - 1, kMax = Math.ceil((W + P - phase) / P) + 1;
-        const yStart = (kk) => Y0 - (kk * P + phase) * s + (kk) * dStep - dStep * (phase / P);
-        ctx.beginPath();
-        ctx.moveTo(kMin * P + phase, yStart(kMin));
-        for (let kk = kMin; kk < kMax; kk++) {
-          const bx = (kk + 1) * P + phase, by = yStart(kk) - s * P;
-          const cx = bx + e, cy = yStart(kk + 1);
-          const nx = (kk + 2) * P + phase, ny = yStart(kk + 1) - s * P;
-          ctx.arcTo(bx, by, cx, cy, rr);
-          ctx.arcTo(cx, cy, nx, ny, rr);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = "none"; ctx.globalAlpha = 1; ctx.shadowColor = "transparent";
+  ctx.setTransform(k, 0, 0, k, -ox * k, -oy * k);
+  ctx.fillStyle = css(cols[0]); ctx.fillRect(0, 0, W, H);
+
+  switch (st.shape) {
+    case "pastillas": {
+      // Diagonal lanes of rounded capsules with random lengths.
+      const h = S * 4.2, gap = h * 0.38, D = Math.hypot(W, H);
+      ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-Math.PI / 6);
+      let lane = 0;
+      for (let y = -D / 2 - h; y < D / 2 + h; y += h + gap, lane++) {
+        const r = mulberry32(st.seed * 977 + lane * 15485863);
+        let x = -D / 2 - r() * h * 6;
+        while (x < D / 2 + h) {
+          const len = h * (1.5 + r() * 6);
+          ctx.beginPath(); rrect(x, y, len, h, h / 2);
+          ctx.fillStyle = css(pick(r)); ctx.fill();
+          x += len + gap;
         }
-        ctx.lineTo(W + 2 * P, H + 2 * P + H); ctx.lineTo(-2 * P, H + 2 * P + H); ctx.closePath();
-        ctx.fillStyle = css(cols[i]); ctx.fill();
       }
-    } else if (st.shape === "bauhaus") {
-      // Tile grid: each cell gets a background and one geometric motif, Bauhaus poster style.
-      const g = S * 9, acc = cols.length > 2 ? cols.slice(1) : cols, TAU = Math.PI * 2;
-      const pick = (r, not) => { let c, t = 0; do { c = acc[Math.floor(r() * acc.length)]; } while (c === not && ++t < 8); return c; };
-      for (let j = 0; j * g < H; j++) for (let i = 0; i * g < W; i++) {
-        const r = mulberry32(st.seed * 131 + i * 7919 + j * 104729);
+      ctx.restore();
+      break;
+    }
+    case "bloques": {
+      // Rounded tiles from recursive splits, some carrying a circle motif, like a widget board.
+      const gap = g * 0.1, minS = g * 0.85;
+      const block = (x, y, w, h) => {
+        const c = pick(rng);
+        ctx.beginPath(); rrect(x + gap / 2, y + gap / 2, w - gap, h - gap, g * 0.22); ctx.fillStyle = css(c); ctx.fill();
+        const m = rng();
+        if (m < 0.5) {
+          ctx.save(); ctx.beginPath(); rrect(x + gap / 2, y + gap / 2, w - gap, h - gap, g * 0.22); ctx.clip();
+          ctx.beginPath(); ctx.fillStyle = css(pick(rng, c));
+          const s = Math.min(w, h);
+          if (m < 0.2) ctx.arc(x + w / 2, y + h / 2, s * 0.28, 0, TAU);
+          else if (m < 0.35) { ctx.moveTo(x + w, y + h); ctx.arc(x + w, y + h, s * 0.62, Math.PI, Math.PI * 1.5); }
+          else ctx.arc(x + w / 2, y + h, s * 0.42, Math.PI, 0);
+          ctx.fill(); ctx.restore();
+        }
+      };
+      const split = (x, y, w, h, depth) => {
+        const canV = w >= 2 * minS, canH = h >= 2 * minS;
+        if ((!canV && !canH) || (depth > 2 && rng() < 0.22)) { block(x, y, w, h); return; }
+        const vert = canV && (!canH || (w > h ? rng() < 0.75 : rng() < 0.25));
+        const L = vert ? w : h, a = Math.max(minS, Math.min(L - minS, L * (0.3 + rng() * 0.4)));
+        if (vert) { split(x, y, a, h, depth + 1); split(x + a, y, w - a, h, depth + 1); }
+        else { split(x, y, w, a, depth + 1); split(x, y + a, w, h - a, depth + 1); }
+      };
+      split(-gap / 2, -gap / 2, W + gap, H + gap, 0);
+      break;
+    }
+    case "truchet": {
+      // Truchet tiles: quarter-circle bands that join into meandering paths.
+      ctx.lineWidth = g * 0.26; ctx.lineCap = "butt";
+      eachCell((x, y, r) => {
+        ctx.beginPath();
+        if (r() < 0.5) { ctx.moveTo(x + g / 2, y); ctx.arc(x, y, g / 2, 0, Math.PI / 2); ctx.moveTo(x + g / 2, y + g); ctx.arc(x + g, y + g, g / 2, Math.PI, Math.PI * 1.5); }
+        else { ctx.moveTo(x + g, y + g / 2); ctx.arc(x + g, y, g / 2, Math.PI / 2, Math.PI); ctx.moveTo(x, y + g / 2); ctx.arc(x, y + g, g / 2, Math.PI * 1.5, TAU); }
+        ctx.strokeStyle = css(pick(r)); ctx.stroke();
+      });
+      break;
+    }
+    case "dianas": {
+      // Concentric targets, some full and some cut in half at the tile edge.
+      eachCell((x, y, r) => {
+        const bg = pick(r), a = pick(r, bg), b = pick(r, a);
+        ctx.fillStyle = css(bg); ctx.fillRect(x, y, g + 0.6, g + 0.6);
+        clipCell(x, y);
+        const half = r() < 0.4, side = Math.floor(r() * 4);
+        const cx = half ? [x + g / 2, x + g, x + g / 2, x][side] : x + g / 2, cy = half ? [y, y + g / 2, y + g, y + g / 2][side] : y + g / 2;
+        const R = half ? g * 0.48 : g * 0.42;
+        for (let q = 0; q < 4; q++) {
+          ctx.beginPath(); ctx.arc(cx, cy, R * (1 - q * 0.26), 0, TAU);
+          ctx.fillStyle = css(q === 3 ? bg : q % 2 ? b : a); ctx.fill();
+        }
+        ctx.restore();
+      });
+      break;
+    }
+    case "tejido": {
+      // Basket weave of capsules: pairs alternate horizontal and vertical.
+      const t = g * 0.34, gap = (g - 2 * t) / 3, inset = g * 0.07;
+      eachCell((x, y, r, i, j) => {
+        ctx.beginPath(); ctx.fillStyle = css(pick(r));
+        if ((i + j) % 2 === 0) rrect(x + inset, y + gap, g - 2 * inset, t, t / 2); else rrect(x + gap, y + inset, t, g - 2 * inset, t / 2);
+        ctx.fill();
+        ctx.beginPath(); ctx.fillStyle = css(pick(r));
+        if ((i + j) % 2 === 0) rrect(x + inset, y + 2 * gap + t, g - 2 * inset, t, t / 2); else rrect(x + 2 * gap + t, y + inset, t, g - 2 * inset, t / 2);
+        ctx.fill();
+      });
+      break;
+    }
+    case "colcha": {
+      // Quilt of half-square triangles, with the odd button on top.
+      eachCell((x, y, r) => {
+        const a = pick(r), b = pick(r, a);
+        ctx.fillStyle = css(a); ctx.fillRect(x, y, g + 0.6, g + 0.6);
+        ctx.beginPath();
+        if (r() < 0.5) { ctx.moveTo(x, y); ctx.lineTo(x + g + 0.6, y); ctx.lineTo(x, y + g + 0.6); }
+        else { ctx.moveTo(x + g + 0.6, y); ctx.lineTo(x + g + 0.6, y + g + 0.6); ctx.lineTo(x, y); }
+        ctx.closePath(); ctx.fillStyle = css(b); ctx.fill();
+        if (r() < 0.25) { ctx.beginPath(); ctx.arc(x + g / 2, y + g / 2, g * 0.15, 0, TAU); ctx.fillStyle = css(pick(r, b)); ctx.fill(); }
+      });
+      break;
+    }
+    case "abanicos": {
+      // Quarter-circle fans growing from a corner of each tile.
+      eachCell((x, y, r) => {
+        const bg = pick(r), c1 = pick(r, bg), c2 = pick(r, c1);
+        ctx.fillStyle = css(bg); ctx.fillRect(x, y, g + 0.6, g + 0.6);
+        clipCell(x, y);
+        const corner = Math.floor(r() * 4), cx = corner % 2 ? x + g : x, cy = corner > 1 ? y + g : y;
+        for (let q = 0; q < 4; q++) {
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, g * (0.95 - q * 0.22), 0, TAU);
+          ctx.fillStyle = css(q === 3 ? bg : q % 2 ? c2 : c1); ctx.fill();
+        }
+        ctx.restore();
+      });
+      break;
+    }
+    default: { // bauhaus: each tile gets a background and one geometric motif
+      eachCell((x, y, r) => {
         const bg = pick(r), fg = pick(r, bg), m = Math.floor(r() * 6), rot = Math.floor(r() * 4);
-        ctx.fillStyle = css(bg); ctx.fillRect(i * g, j * g, g + 0.6, g + 0.6);
-        ctx.save(); ctx.translate(i * g + g / 2, j * g + g / 2); ctx.rotate(rot * Math.PI / 2); ctx.translate(-g / 2, -g / 2);
+        ctx.fillStyle = css(bg); ctx.fillRect(x, y, g + 0.6, g + 0.6);
+        ctx.save(); ctx.translate(x + g / 2, y + g / 2); ctx.rotate(rot * Math.PI / 2); ctx.translate(-g / 2, -g / 2);
         ctx.beginPath(); ctx.fillStyle = css(fg);
         if (m === 0) { ctx.moveTo(0, 0); ctx.arc(0, 0, g, 0, Math.PI / 2); }
         else if (m === 1) { ctx.arc(g / 2, 0, g / 2, 0, Math.PI); }
@@ -334,135 +405,10 @@ function renderMaterial(canvas, st, view) {
         ctx.fill();
         if (m === 2 && r() < 0.5) { ctx.beginPath(); ctx.fillStyle = css(bg); ctx.arc(g / 2, g / 2, g * 0.15, 0, TAU); ctx.fill(); }
         ctx.restore();
-      }
-    } else if (st.shape === "arcoiris") {
-      // Rows of 70s rainbow arches, every other row shifted half a tile.
-      const R = S * 5.5, n = Math.max(2, Math.min(N - 1, 6)), bw = R / (n + 0.7);
-      for (let j = 0; (j - 1) * R < H; j++) {
-        const yb = (j + 1) * R, off = (j & 1) ? R : 0;
-        for (let x = -2 * R + off; x < W + 2 * R; x += 2 * R) {
-          for (let q = 0; q <= n; q++) {
-            ctx.beginPath(); ctx.arc(x + R, yb, R - q * bw, Math.PI, 0); ctx.closePath();
-            ctx.fillStyle = css(q === n ? cols[0] : cols[1 + (q % (N - 1))]); ctx.fill();
-          }
-        }
-      }
-    } else if (st.shape === "pastillas") {
-      // Diagonal lanes of rounded capsules with random lengths.
-      const h = S * 4.2, gap = h * 0.38, D = Math.hypot(W, H);
-      const capsule = (x, y, len) => { const rr = h / 2; ctx.moveTo(x + rr, y); ctx.lineTo(x + len - rr, y); ctx.arc(x + len - rr, y + rr, rr, -Math.PI / 2, Math.PI / 2); ctx.lineTo(x + rr, y + h); ctx.arc(x + rr, y + rr, rr, Math.PI / 2, Math.PI * 1.5); ctx.closePath(); };
-      ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-Math.PI / 6);
-      let lane = 0;
-      for (let y = -D / 2 - h; y < D / 2 + h; y += h + gap, lane++) {
-        const r = mulberry32(st.seed * 977 + lane * 15485863);
-        let x = -D / 2 - r() * h * 6;
-        while (x < D / 2 + h) {
-          const len = h * (1.5 + r() * 6);
-          ctx.beginPath(); capsule(x, y, len);
-          ctx.fillStyle = css(cols[1 + Math.floor(r() * (N - 1))]); ctx.fill();
-          x += len + gap;
-        }
-      }
-      ctx.restore();
-    } else if (st.shape === "feston") {
-      // Concentric scalloped "cookie" shapes, each layer twisted a little.
-      const cx = W * (0.25 + rng() * 0.5), cy = H * (0.25 + rng() * 0.5);
-      const R = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) * 1.08, amp = S * 1.8;
-      for (let i = 1; i < N; i++) {
-        const rad = R * (1 - (i - 1) / N) * 0.97, lobes = Math.max(6, Math.round(rad / (S * 7))), ph = i * 0.9;
-        ctx.beginPath();
-        const steps = Math.max(360, lobes * 24);
-        for (let a = 0; a <= steps; a++) {
-          const t = a / steps * Math.PI * 2, rr = rad + amp * Math.cos(t * lobes + ph);
-          a ? ctx.lineTo(cx + rr * Math.cos(t), cy + rr * Math.sin(t)) : ctx.moveTo(cx + rr * Math.cos(t), cy + rr * Math.sin(t));
-        }
-        ctx.closePath(); ctx.fillStyle = css(cols[i]); ctx.fill();
-      }
-    } else if (st.shape === "sol") {
-      // Retro sunburst: alternating rays plus a ringed sun.
-      const cx = W * (0.15 + rng() * 0.7), cy = H * (0.7 + rng() * 0.25), R = Math.hypot(W, H) * 1.3;
-      const rays = 32, a0 = rng();
-      ctx.beginPath(); ctx.fillStyle = css(cols[1]);
-      for (let i = 0; i < rays; i += 2) {
-        ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, (i + a0) / rays * Math.PI * 2, (i + 1 + a0) / rays * Math.PI * 2); ctx.closePath();
-      }
-      ctx.fill();
-      const rings = Math.max(1, N - 2), R0 = S * 22;
-      for (let q = 0; q < rings; q++) {
-        ctx.beginPath(); ctx.arc(cx, cy, R0 * (1 - q / (rings + 0.4)), 0, Math.PI * 2);
-        ctx.fillStyle = css(cols[2 + q] || cols[N - 1]); ctx.fill();
-      }
-    } else if (st.shape === "burbujas") {
-      // Overlapping ringed discs, big ones underneath.
-      const count = Math.max(12, Math.round(W * H / (S * S * 230)));
-      const list = [];
-      for (let i = 0; i < count; i++) list.push([rng() * W, rng() * H, S * (2 + Math.pow(rng(), 2.2) * 26), Math.floor(rng() * (N - 1))]);
-      list.sort((a, b) => b[2] - a[2]);
-      for (const [x, y, r0, ci] of list)
-        for (let q = 0; q < 3; q++) {
-          ctx.beginPath(); ctx.arc(x, y, r0 * (1 - q * 0.3), 0, Math.PI * 2);
-          ctx.fillStyle = css(cols[1 + (ci + q) % (N - 1)]); ctx.fill();
-        }
-    } else if (st.shape === "cintas") {
-      // Thick rounded ribbons that ripple in a slow diagonal wave.
-      const D = Math.hypot(W, H), sp = S * 7, lam = S * (30 + rng() * 20), amp = S * 3.5;
-      ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-0.35); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = sp * 0.62;
-      let i = 0;
-      for (let y = -D / 2; y < D / 2 + sp; y += sp, i++) {
-        ctx.beginPath();
-        let first = true;
-        for (let x = -D / 2; x <= D / 2; x += S) {
-          const yy = y + amp * Math.sin(x / lam * Math.PI * 2 + i * 0.55);
-          if (first) { ctx.moveTo(x, yy); first = false; } else ctx.lineTo(x, yy);
-        }
-        ctx.strokeStyle = css(cols[1 + (i % (N - 1))]); ctx.stroke();
-      }
-      ctx.restore();
-    } else if (st.shape === "origami") {
-      // Low-poly facets coloured along a diagonal sweep of the palette.
-      const g = S * 9, nx = Math.ceil(W / g) + 2, ny = Math.ceil(H / g) + 2, pts = [];
-      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) pts.push([(i - 0.5 + (rng() - 0.5) * 0.75) * g, (j - 0.5 + (rng() - 0.5) * 0.75) * g]);
-      const P = (i, j) => pts[j * nx + i];
-      const tri = (a, b, c) => {
-        const x = (a[0] + b[0] + c[0]) / 3, y = (a[1] + b[1] + c[1]) / 3;
-        let t = (x / W * 0.4 + y / H * 0.6) * (N - 1) + (rng() - 0.5) * 0.9;
-        t = Math.max(0, Math.min(N - 1, t)); const f = Math.floor(t);
-        const col = css(mix(cols[f], cols[Math.min(N - 1, f + 1)], t - f));
-        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.closePath();
-        ctx.fillStyle = col; ctx.strokeStyle = col; ctx.fill(); ctx.stroke();
-      };
-      ctx.lineWidth = 1 / k; ctx.lineJoin = "round";
-      for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
-        const a = P(i, j), b = P(i + 1, j), c = P(i, j + 1), d = P(i + 1, j + 1);
-        if (rng() < 0.5) { tri(a, b, d); tri(a, d, c); } else { tri(a, b, c); tri(b, d, c); }
-      }
-    } else if (st.shape === "colinas") {
-      // Layered rolling hills, each with its own pair of sine waves.
-      const step = Math.max(2, W / 240);
-      for (let i = 1; i < N; i++) {
-        const base = H * (0.08 + 0.92 * i / N), amp = H / N * 0.75;
-        const l1 = S * (18 + rng() * 20), l2 = S * (7 + rng() * 8), q1 = rng() * 6.283, q2 = rng() * 6.283;
-        ctx.beginPath(); ctx.moveTo(-step, H + 10);
-        for (let x = -step; x <= W + step; x += step) ctx.lineTo(x, base + amp * (Math.sin(x / l1 + q1) * 0.75 + Math.sin(x / l2 + q2) * 0.25));
-        ctx.lineTo(W + step, H + 10); ctx.closePath();
-        ctx.fillStyle = css(cols[i]); ctx.fill();
-      }
-    } else { // arcos: wobbly concentric rings from a corner
-      const cx = -W * 0.08, cy = H * 1.08, R = Math.hypot(W * 1.15, H * 1.15);
-      const lobes = 3 + Math.floor(rng() * 4), wob = S * 2.2;
-      for (let i = 1; i < N; i++) {
-        const rad = R * (1 - i / N), ph = rng() * 6.283;
-        ctx.beginPath();
-        for (let a = 0; a <= 360; a += 2) {
-          const t = a * Math.PI / 180, rr = rad + wob * Math.sin(t * lobes + ph);
-          const x = cx + rr * Math.cos(t), y = cy + rr * Math.sin(t);
-          a ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-        }
-        ctx.closePath(); ctx.fillStyle = css(cols[i]); ctx.fill();
-      }
+      });
     }
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   addGrain(ctx, canvas.width, canvas.height, st.grain, view.grainScale ?? 1);
 }
 

@@ -1,35 +1,9 @@
 "use strict";
-// Abstract and gradient styles. Wallpaper coordinates as in render(): `view` maps the W×H
-// wallpaper onto the canvas with scale k and origin (ox, oy). S is the design scale in px.
-
-// Smooth pseudo-noise built from rotated sine waves (fast, seedable, tiles nowhere).
-function makeField(rng, lam, octaves = 3) {
-  const fx = [], fy = [], ph = [], am = [];
-  let amp = 1, sum = 0;
-  for (let o = 0; o < octaves; o++) {
-    for (let r = 0; r < 2; r++) {
-      const a = rng() * Math.PI * 2, l = lam / Math.pow(1.9, o) * (0.8 + rng() * 0.4);
-      fx.push(Math.cos(a) * 2 * Math.PI / l); fy.push(Math.sin(a) * 2 * Math.PI / l);
-      ph.push(rng() * Math.PI * 2); am.push(amp); sum += amp;
-    }
-    amp *= 0.5;
-  }
-  const n = fx.length, norm = 1.6 / sum;
-  return (x, y) => { let f = 0; for (let i = 0; i < n; i++) f += am[i] * Math.sin(x * fx[i] + y * fy[i] + ph[i]); return f * norm; };
-}
+// Abstract and gradient styles. `view` maps the W×H wallpaper onto the canvas with scale k and
+// origin (ox, oy). S is the design scale in wallpaper px. Colours always come from the palette
+// (interpolated in Oklab), so nothing clips or burns.
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
-const toLin = (c) => c.map((v) => Math.pow(v / 255, 2.2));
-const fromLin = (v) => 255 * Math.pow(clamp01(v), 1 / 2.2);
-
-// Sample the palette continuously at t∈[0,1] into out.
-function sampler(cols) {
-  const n = cols.length - 1;
-  return (t, out) => {
-    const x = clamp01(t) * n, i = Math.min(n - 1, Math.floor(x)), f = x - i, a = cols[i], b = cols[i + 1];
-    out[0] = a[0] + (b[0] - a[0]) * f; out[1] = a[1] + (b[1] - a[1]) * f; out[2] = a[2] + (b[2] - a[2]) * f;
-  };
-}
 
 // Per-pixel renderer: fn(X, Y, out) receives wallpaper coordinates and writes RGB.
 function pixels(ctx, canvas, view, fn) {
@@ -51,25 +25,25 @@ function hash3(i, j, n) {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-// Soft mesh gradient: palette colours placed at random points, blended by inverse distance in linear light.
+// Soft mesh gradient: palette colours at well-spread points, blended with Gaussian weights in Oklab.
 function makeMesh(rng, cols, W, H, S) {
-  const M = Math.min(W, H), lin = cols.map(toLin);
-  const pts = cols.map((_, i) => {
-    // Spread points: a shuffled diagonal walk keeps neighbours in the palette apart.
-    const t = (i + 0.5) / cols.length;
-    return [(0.5 + (rng() - 0.5) * 1.3) * W, ((t + (rng() - 0.5) * 0.5) * 1.2 - 0.1) * H];
+  const labs = cols.map(rgbToOklab), n = labs.length, g = Math.ceil(Math.sqrt(n));
+  const cells = Array.from({ length: g * g }, (_, i) => i);
+  for (let i = cells.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [cells[i], cells[j]] = [cells[j], cells[i]]; }
+  const pts = labs.map((_, i) => {
+    const c = cells[i], cx = c % g, cy = Math.floor(c / g);
+    return [((cx + 0.2 + 0.6 * rng()) / g * 1.1 - 0.05) * W, ((cy + 0.2 + 0.6 * rng()) / g * 1.1 - 0.05) * H];
   });
-  const wx = makeField(rng, S * 45, 2), wy = makeField(rng, S * 45, 2), A = S * 9;
-  const n = pts.length;
+  const sigma = 0.62 * Math.max(W, H) / g, inv = 1 / (2 * sigma * sigma);
+  const wa = makeFbm(rng, 3), wb = makeFbm(rng, 3), sc = 1 / (S * 70), A = S * 14;
   return (X, Y, out) => {
-    const x = X + wx(X, Y) * A, y = Y + wy(X, Y) * A;
-    let r = 0, g = 0, b = 0, ws = 0;
+    const x = X + A * wa(X * sc, Y * sc), y = Y + A * wb(X * sc + 4.1, Y * sc - 2.3);
+    let L = 0, a = 0, b = 0, ws = 1e-12;
     for (let i = 0; i < n; i++) {
-      const dx = (x - pts[i][0]) / M, dy = (y - pts[i][1]) / M;
-      const w = 1 / Math.pow(dx * dx + dy * dy + 0.004, 1.35);
-      r += w * lin[i][0]; g += w * lin[i][1]; b += w * lin[i][2]; ws += w;
+      const dx = x - pts[i][0], dy = y - pts[i][1], w = Math.exp(-(dx * dx + dy * dy) * inv);
+      L += w * labs[i][0]; a += w * labs[i][1]; b += w * labs[i][2]; ws += w;
     }
-    out[0] = fromLin(r / ws); out[1] = fromLin(g / ws); out[2] = fromLin(b / ws);
+    oklabInto(L / ws, a / ws, b / ws, out);
   };
 }
 
@@ -80,113 +54,136 @@ function renderArt(canvas, st, view) {
   const css = (c, a = 1) => `rgba(${c.map((v) => v.toFixed(1)).join(",")},${a})`;
   const u = Math.min(W, H) / 1080, S = st.size * u;
   const rng = mulberry32(st.seed * 7919 + 101);
-  const sample = sampler(cols);
   const dark = st.theme !== "light";
   const id = st.style === "abstract" ? st.abstract : st.gradient;
+  const inks = N > 2 ? cols.slice(1) : cols;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = "none"; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
   const toWall = () => ctx.setTransform(k, 0, 0, k, -ox * k, -oy * k);
 
   switch (id) {
+    // ---------------- gradients ----------------
     case "malla": pixels(ctx, canvas, view, makeMesh(rng, cols, W, H, S)); break;
 
     case "aurora": {
-      // Luminous curtains over a deep sky, added in linear light.
-      const sky = toLin(dark ? mix(cols[0], [0, 0, 0], 0.45) : cols[0]);
-      const skyTop = toLin(dark ? mix(cols[0], [0, 0, 0], 0.75) : mix(cols[0], [255, 255, 255], 0.3));
-      const nC = Math.min(3, N - 2), curt = [];
+      // Light ribbons with a sharp lower hem fading upwards, over a deep sky. Light is added
+      // with a soft roll-off so bright colours never clip.
+      const skyTop = (dark ? mix(cols[0], [0, 0, 0], 0.7) : mix(cols[0], [255, 255, 255], 0.2)).map(srgbToLin);
+      const skyBot = (dark ? mix(cols[0], [0, 0, 0], 0.35) : cols[0]).map(srgbToLin);
+      const nC = Math.max(1, Math.min(3, N - 2)), curt = [];
       for (let i = 0; i < nC; i++) {
-        curt.push({ col: toLin(cols[Math.max(1, N - 2 - i)]), base: H * (0.4 + 0.12 * i + rng() * 0.06), w: S * (2.6 + rng() * 2.2),
-          f: makeField(rng, S * 60, 2), g: makeField(rng, S * 14, 2), amp: H * (0.1 + rng() * 0.06),
-          gain: (dark ? 0.42 : 0.28) - i * 0.08, fade: makeField(rng, S * 80, 1) });
+        curt.push({ col: cols[Math.max(1, N - 2 - i)].map(srgbToLin), base: H * (0.36 + 0.14 * i + rng() * 0.06),
+          amp: H * (0.1 + rng() * 0.05), w: S * (2.6 + rng() * 2), gain: 0.9 - i * 0.2,
+          shape: makeFbm(rng, 3), fade: makeFbm(rng, 2), ph: rng() * 50 });
       }
+      const lam = 1 / (S * 55);
       pixels(ctx, canvas, view, (X, Y, out) => {
         const t = Y / H;
-        let r = skyTop[0] + (sky[0] - skyTop[0]) * t, g = skyTop[1] + (sky[1] - skyTop[1]) * t, b = skyTop[2] + (sky[2] - skyTop[2]) * t;
+        let r = 0, g = 0, b = 0;
         for (const c of curt) {
-          const dy = Y - (c.base + c.f(X, 0) * c.amp);
-          // Sharp lower hem, light fading upwards in rays, and gaps along the band.
-          let I = dy > 0 ? Math.exp(-Math.pow(dy / (c.w * 0.45), 2)) : Math.exp(dy / (c.w * 2.6));
-          I *= c.gain * (0.72 + 0.28 * Math.sin(X / (S * 1.9) + c.g(X, 0) * 4)) * clamp01(0.2 + 1.1 * c.fade(X, 0));
+          const dy = Y - (c.base + c.amp * c.shape(X * lam + c.ph, c.ph));
+          let I = dy > 0 ? Math.exp(-(dy * dy) / (c.w * c.w * 0.25)) : Math.exp(dy / (c.w * 3.2));
+          I *= c.gain * clamp01(0.3 + 1.3 * c.fade(X / (S * 90), c.ph)) * (0.86 + 0.14 * c.shape(X / (S * 7), c.ph + 9));
           r += c.col[0] * I; g += c.col[1] * I; b += c.col[2] * I;
         }
-        out[0] = fromLin(r); out[1] = fromLin(g); out[2] = fromLin(b);
+        const sr = skyTop[0] + (skyBot[0] - skyTop[0]) * t, sg = skyTop[1] + (skyBot[1] - skyTop[1]) * t, sb = skyTop[2] + (skyBot[2] - skyTop[2]) * t;
+        out[0] = linToSrgb(sr + (1 - sr) * (1 - Math.exp(-r * 1.6)));
+        out[1] = linToSrgb(sg + (1 - sg) * (1 - Math.exp(-g * 1.6)));
+        out[2] = linToSrgb(sb + (1 - sb) * (1 - Math.exp(-b * 1.6)));
       });
       break;
     }
 
     case "orbes": {
+      // Soft out-of-focus orbs blended normally (no additive burn).
+      toWall();
+      const bg = dark ? mix(cols[0], [0, 0, 0], 0.25) : mix(cols[N - 1], [255, 255, 255], 0.4);
+      ctx.fillStyle = css(bg); ctx.fillRect(0, 0, W, H);
+      const count = 8 + Math.floor(rng() * 5);
+      for (let i = 0; i < count; i++) {
+        const x = (rng() * 1.2 - 0.1) * W, y = (rng() * 1.2 - 0.1) * H, r = S * (14 + rng() * 26);
+        const c = inks[Math.floor(rng() * inks.length)], grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+        for (let q = 0; q <= 8; q++) { const t = q / 8; grd.addColorStop(t, css(c, 0.82 * Math.exp(-3 * t * t) * (1 - t * t))); }
+        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    }
+
+    case "seda": {
+      // Silk: smooth folds from a warped field, banded softly across the palette.
+      const fa = makeFbm(rng, 3), fb = makeFbm(rng, 3), lut = makeLut(cols), sc = 1 / (S * 58);
+      pixels(ctx, canvas, view, (X, Y, out) => {
+        const x = X * sc, y = Y * sc, qx = fa(x, y), qy = fb(x + 3.1, y - 1.7);
+        const v = fa(x + 1.7 * qx + 7.2, y + 1.7 * qy + 1.3);
+        lut(0.5 + 0.5 * Math.sin(v * 4 + y * 0.9 + qx * 1.4), out);
+      });
+      break;
+    }
+
+    case "horizonte": {
+      // Sky gradient with a sun glow, and layered hills in silhouette.
+      const lut = makeLut(dark ? cols : cols.slice().reverse()), sx = W * (0.2 + rng() * 0.6), sy = H * (0.56 + rng() * 0.08), R = S * 26;
+      pixels(ctx, canvas, view, (X, Y, out) => {
+        const d2 = ((X - sx) ** 2 + (Y - sy) ** 2) / (R * R);
+        lut(clamp01(Math.pow(Y / H, 0.85) * 0.78 + 0.32 * Math.exp(-d2) + 0.12 * Math.exp(-d2 / 9)), out);
+      });
+      toWall();
+      const sun = [0, 0, 0]; lut(1, sun);
+      ctx.beginPath(); ctx.arc(sx, sy, R * 0.42, 0, Math.PI * 2); ctx.fillStyle = css(sun, 0.9); ctx.fill();
+      const hf = makeFbm(rng, 3), base = dark ? mix(cols[0], [0, 0, 0], 0.3) : mix(cols[0], [0, 0, 0], 0.15);
+      for (let i = 0; i < 3; i++) {
+        const y0 = H * (0.66 + i * 0.1), amp = H * (0.07 - i * 0.012), step = Math.max(2, W / 300);
+        ctx.beginPath(); ctx.moveTo(-10, H + 10);
+        for (let x = -10; x <= W + 10; x += step) ctx.lineTo(x, y0 - amp * (0.6 + hf(x / (S * 40), i * 5.3)));
+        ctx.lineTo(W + 10, H + 10); ctx.closePath();
+        ctx.fillStyle = css(mix(base, cols[Math.min(N - 1, 1)], 0.45 - i * 0.2)); ctx.fill();
+      }
+      break;
+    }
+
+    case "lineal": {
+      // Multi-stop gradient with eased stops and a whisper of warp.
+      const a = rng() * Math.PI, ca = Math.cos(a), sa = Math.sin(a), L = Math.abs(W * ca) + Math.abs(H * sa);
+      const lut = makeLut(cols), f = makeFbm(rng, 2), sc = 1 / (S * 80);
+      pixels(ctx, canvas, view, (X, Y, out) => {
+        lut(clamp01(((X - W / 2) * ca + (Y - H / 2) * sa) / L + 0.5 + 0.06 * f(X * sc, Y * sc)), out);
+      });
+      break;
+    }
+
+    // ---------------- abstract ----------------
+    case "liquido": {
+      // Marbled ink from nested domain warping.
+      const f = makeFbm(rng, 4), lut = makeLut(cols), sc = 1 / (S * 40), w = 3.2;
+      pixels(ctx, canvas, view, (X, Y, out) => {
+        const x = X * sc, y = Y * sc;
+        const qx = f(x, y), qy = f(x + 5.2, y + 1.3);
+        const rx = f(x + w * qx + 1.7, y + w * qy + 9.2), ry = f(x + w * qx + 8.3, y + w * qy + 2.8);
+        const v = f(x + w * rx, y + w * ry);
+        lut(clamp01(0.5 + 1.25 * v + 0.35 * qx), out);
+      });
+      break;
+    }
+
+    case "papel": {
+      // Paper-cut layers: wavy sheets stacked with soft shadows.
       toWall();
       ctx.fillStyle = css(cols[0]); ctx.fillRect(0, 0, W, H);
-      ctx.globalCompositeOperation = dark ? "screen" : "multiply";
-      const count = 7 + Math.floor(rng() * 5);
-      for (let i = 0; i < count; i++) {
-        const x = (rng() * 1.2 - 0.1) * W, y = (rng() * 1.2 - 0.1) * H, r = S * (12 + rng() * 28), c = cols[1 + Math.floor(rng() * (N - 1))];
-        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-        g.addColorStop(0, css(c, 0.95)); g.addColorStop(0.5, css(c, 0.45)); g.addColorStop(1, css(c, 0));
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      const nf = makeSimplex(rng), layers = N - 1, step = Math.max(2, W / 260);
+      const lam = S * (40 + rng() * 25), tilt = (rng() - 0.5) * 0.3;
+      for (let i = 1; i <= layers; i++) {
+        const y0 = H * (0.1 + 0.85 * i / (layers + 0.6)), amp = H * 0.05 + S * 2;
+        ctx.save();
+        ctx.shadowColor = dark ? "rgba(0,0,0,0.45)" : "rgba(40,30,60,0.22)";
+        ctx.shadowBlur = S * 1.6 * k; ctx.shadowOffsetY = -S * 0.35 * k;
+        ctx.beginPath(); ctx.moveTo(-20, H + 20);
+        for (let x = -20; x <= W + 20; x += step) {
+          ctx.lineTo(x, y0 + (x - W / 2) * tilt + amp * (nf(x / lam, i * 3.7) * 0.8 + nf(x / (lam * 0.35), i * 7.1) * 0.2));
+        }
+        ctx.lineTo(W + 20, H + 20); ctx.closePath();
+        ctx.fillStyle = css(cols[i]); ctx.fill();
+        ctx.restore();
       }
-      ctx.globalCompositeOperation = "source-over";
-      break;
-    }
-
-    case "holo": {
-      // Iridescent foil: a warped field folded back and forth across the palette.
-      const f1 = makeField(rng, S * 32, 3), f2 = makeField(rng, S * 32, 3), A = S * 10;
-      pixels(ctx, canvas, view, (X, Y, out) => {
-        const w = f2(X, Y);
-        const v = f1(X + A * w, Y - A * w) * 0.9 + Y / H * 0.7;
-        const t = v - Math.floor(v), tri = 1 - Math.abs(2 * t - 1);
-        sample(tri, out);
-        const sheen = Math.pow(Math.max(0, w), 6) * 70;
-        out[0] = Math.min(255, out[0] + sheen); out[1] = Math.min(255, out[1] + sheen); out[2] = Math.min(255, out[2] + sheen);
-      });
-      break;
-    }
-
-    case "lineal":
-    case "conico": {
-      toWall();
-      let g;
-      if (id === "conico" && ctx.createConicGradient) {
-        g = ctx.createConicGradient(rng() * Math.PI * 2, W * (0.2 + rng() * 0.6), H * (0.2 + rng() * 0.6));
-        cols.forEach((c, i) => g.addColorStop(i / N, css(c)));
-        g.addColorStop(1, css(cols[0]));
-      } else {
-        const a = rng() * Math.PI, L = Math.hypot(W, H) / 2, cx = W / 2, cy = H / 2;
-        g = ctx.createLinearGradient(cx - Math.cos(a) * L, cy - Math.sin(a) * L, cx + Math.cos(a) * L, cy + Math.sin(a) * L);
-        cols.forEach((c, i) => g.addColorStop(i / (N - 1), css(c)));
-      }
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      // A soft light falling across the surface.
-      const lx = W * rng(), ly = H * rng() * 0.6, lr = Math.hypot(W, H) * 0.6;
-      const light = ctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
-      light.addColorStop(0, "rgba(255,255,255,0.16)"); light.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = light; ctx.fillRect(0, 0, W, H);
-      break;
-    }
-
-    case "liquido": {
-      // Domain-warped flow, like marbled ink.
-      const fa = makeField(rng, S * 75, 2), fb = makeField(rng, S * 75, 2), fc = makeField(rng, S * 60, 3), A = S * 30;
-      pixels(ctx, canvas, view, (X, Y, out) => {
-        const qx = fa(X, Y), qy = fb(X + S * 17, Y - S * 9);
-        const v = fc(X + A * qx, Y + A * qy);
-        sample(0.5 + 0.36 * v + 0.1 * qx, out);
-      });
-      break;
-    }
-
-    case "cristal": {
-      // Reeded glass over a mesh gradient: each flute mirrors and shades what is behind it.
-      const base = makeMesh(rng, cols, W, H, S), fw = S * 3.2, tmp = [0, 0, 0];
-      pixels(ctx, canvas, view, (X, Y, out) => {
-        const uu = (((X % fw) + fw) % fw) / fw;
-        base(X - (uu - 0.5) * fw * 1.6, Y + (uu - 0.5) * S * 1.5, tmp);
-        let shade = 0.84 + 0.24 * Math.sin(uu * Math.PI);
-        if (uu < 0.045) shade *= 0.86;
-        const hi = 60 * Math.exp(-Math.pow((uu - 0.76) / 0.07, 2));
-        out[0] = Math.min(255, tmp[0] * shade + hi); out[1] = Math.min(255, tmp[1] * shade + hi); out[2] = Math.min(255, tmp[2] * shade + hi);
-      });
       break;
     }
 
@@ -194,18 +191,18 @@ function renderArt(canvas, st, view) {
       // Flow-field strokes, like a generative pen plotter.
       toWall();
       ctx.fillStyle = css(cols[0]); ctx.fillRect(0, 0, W, H);
-      const field = makeField(rng, S * 42, 3), count = Math.round(W * H / (S * S * 13)), step = S * 0.7;
-      ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.globalAlpha = 0.92;
+      const f = makeFbm(rng, 3), sc = 1 / (S * 48), count = Math.round(W * H / (S * S * 10)), step = S * 0.6;
+      ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.globalAlpha = 0.88;
       for (let i = 0; i < count; i++) {
         let x = rng() * W, y = rng() * H;
-        const len = 30 + Math.floor(rng() * 90);
+        const len = 50 + Math.floor(rng() * 110);
         ctx.beginPath(); ctx.moveTo(x, y);
         for (let s = 0; s < len; s++) {
-          const a = field(x, y) * Math.PI * 1.6;
+          const a = f(x * sc, y * sc) * Math.PI * 3.2;
           x += Math.cos(a) * step; y += Math.sin(a) * step; ctx.lineTo(x, y);
         }
-        ctx.lineWidth = S * (0.25 + rng() * 0.95);
-        ctx.strokeStyle = css(cols[1 + Math.floor(rng() * (N - 1))]); ctx.stroke();
+        ctx.lineWidth = S * (0.3 + rng() * 0.9);
+        ctx.strokeStyle = css(inks[Math.floor(rng() * inks.length)]); ctx.stroke();
       }
       ctx.globalAlpha = 1;
       break;
@@ -225,8 +222,8 @@ function renderArt(canvas, st, view) {
           else if (d < d2) { d2 = d; s2 = s; }
         }
         const e = (d2 - d1) / (2 * Math.hypot(s1[0] - s2[0], s1[1] - s2[1]));
-        const c = cols[1 + Math.floor(hash3(id1, 3, seed) * (N - 1))];
-        const glow = 1.14 - 0.32 * Math.sqrt(d1) / g, sh = 0.88 + 0.24 * hash3(id1, 5, seed);
+        const c = inks[Math.floor(hash3(id1, 3, seed) * inks.length)];
+        const glow = 1.08 - 0.22 * Math.sqrt(d1) / g, sh = 0.92 + 0.14 * hash3(id1, 5, seed);
         const t = clamp01((e - lead / 2) / px + 0.5);
         for (let q = 0; q < 3; q++) out[q] = lc[q] + (Math.min(255, c[q] * glow * sh) - lc[q]) * t;
       });
@@ -238,7 +235,7 @@ function renderArt(canvas, st, view) {
       toWall();
       const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
       const order = cols.slice().sort((a, b) => lum(a) - lum(b));
-      const ground = dark ? order[0] : order[order.length - 1], inks = order.filter((c) => c !== ground);
+      const ground = dark ? order[0] : order[order.length - 1], memInks = order.filter((c) => c !== ground);
       ctx.fillStyle = css(ground); ctx.fillRect(0, 0, W, H);
       const g = S * 8;
       ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -246,7 +243,7 @@ function renderArt(canvas, st, view) {
         const r = mulberry32(st.seed * 31 + i * 7919 + j * 104729);
         if (r() < 0.12) continue;
         const x = (i + 0.2 + r() * 0.6) * g, y = (j + 0.2 + r() * 0.6) * g, s = g * (0.3 + r() * 0.2);
-        const c = css(inks[Math.floor(r() * inks.length)]), type = Math.floor(r() * 7);
+        const c = css(memInks[Math.floor(r() * memInks.length)]), type = Math.floor(r() * 7);
         ctx.save(); ctx.translate(x, y); ctx.rotate(r() * Math.PI * 2);
         ctx.fillStyle = c; ctx.strokeStyle = c; ctx.lineWidth = s * 0.2; ctx.beginPath();
         if (type === 0) { ctx.moveTo(-s, 0); for (let q = 1; q <= 4; q++) ctx.lineTo(-s + q * s / 2, q % 2 ? -s * 0.45 : 0); ctx.stroke(); }
@@ -265,20 +262,21 @@ function renderArt(canvas, st, view) {
       // Stacked ridge lines rising in the middle, each hiding the ones behind it.
       toWall();
       ctx.fillStyle = css(cols[0]); ctx.fillRect(0, 0, W, H);
-      const sp = S * 2.4, field = makeField(rng, S * 12, 3), stepX = Math.max(1, S * 0.5);
-      const y0 = H * 0.1, rows = Math.ceil((H * 0.98 - y0) / sp);
+      const lut = makeLut(inks.length > 1 ? inks : cols), f = makeFbm(rng, 3);
+      const sp = S * 2.4, stepX = Math.max(1, S * 0.5), y0 = H * 0.1, rows = Math.ceil((H * 0.98 - y0) / sp);
       ctx.lineWidth = Math.max(1 / k, S * 0.38); ctx.lineJoin = "round";
+      const lc = [0, 0, 0];
       for (let row = 0; row < rows; row++) {
         const y = y0 + row * sp;
         ctx.beginPath(); ctx.moveTo(-10, y);
         for (let x = -10; x <= W + 10; x += stepX) {
           const env = Math.exp(-Math.pow((x - W / 2) / (W * 0.27), 2));
-          const n = field(x, y * 0.4);
+          const n = f(x / (S * 9), y / (S * 22)) * 1.7;
           ctx.lineTo(x, y - env * (0.12 + Math.max(0, n)) * S * 14);
         }
         ctx.lineTo(W + 10, y); ctx.lineTo(W + 10, H + 10); ctx.lineTo(-10, H + 10); ctx.closePath();
         ctx.fillStyle = css(cols[0]); ctx.fill();
-        const lc = [0, 0, 0]; sample(0.2 + 0.8 * row / Math.max(1, rows - 1), lc);
+        lut(row / Math.max(1, rows - 1), lc);
         ctx.strokeStyle = css(lc); ctx.stroke();
       }
       break;
@@ -287,6 +285,7 @@ function renderArt(canvas, st, view) {
     default: pixels(ctx, canvas, view, makeMesh(rng, cols, W, H, S));
   }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
-  addGrain(ctx, canvas.width, canvas.height, st.grain, view.grainScale ?? 1);
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1; ctx.shadowColor = "transparent";
+  // Smooth styles get a finer grain than the textured ones.
+  addGrain(ctx, canvas.width, canvas.height, st.grain * 0.5, view.grainScale ?? 1);
 }
