@@ -467,7 +467,7 @@ button:disabled { opacity: 0.6; cursor: progress; }
   function drawThumbs() {
     document.querySelectorAll(".pat canvas").forEach((cv) => {
       const id = cv.dataset.pattern;
-      render(cv, Object.assign({}, state, { pattern: id, grad: state.grad * 0.25 }), { unit: cv.width / 300, grainScale: 0.4 });
+      render(cv, Object.assign({}, state, { pattern: id, grad: state.grad * 0.25 }), { unit: cv.width / 170, grainScale: 0.4 });
     });
   }
 
