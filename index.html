@@ -130,10 +130,10 @@ input[type="number"] { width: 100%; font-family: var(--font-mono); font-size: 0.
 .pat input:checked ~ span { color: var(--fg); font-weight: 600; }
 .pat input:focus-visible ~ canvas { outline: 2px dashed var(--accent); }
 
-.palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
 .pal { position: relative; display: grid; gap: 6px; padding: 8px; border-radius: 11px; border: 1px solid var(--line); cursor: pointer; background: var(--sunk); }
 .pal input { position: absolute; opacity: 0; pointer-events: none; }
-.pal .strip { display: flex; height: 26px; border-radius: 7px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--ring); }
+.pal .strip { display: flex; height: 22px; border-radius: 7px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--ring); }
 .pal .strip i { flex: 1; }
 .pal span { font-size: 0.8rem; color: var(--muted); }
 .pal:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
@@ -324,7 +324,11 @@ button:disabled { opacity: 0.6; cursor: progress; }
     ["Vino", "#36151f"], ["Frambuesa", "#5e1638"], ["Ciruela", "#2b1738"], ["Lavanda", "#4a3a78"],
     ["Pizarra", "#1f2a33"], ["Grafito", "#24262c"], ["Carbón", "#121214"], ["Arena", "#6e6450"],
   ];
-  const SHAPES = [["manchas", "Manchas"], ["escalones", "Escalones"], ["colinas", "Colinas"], ["arcos", "Arcos"]];
+  const SHAPES = [
+    ["manchas", "Topografía"], ["feston", "Festón"], ["bauhaus", "Bauhaus"], ["arcoiris", "Arcoíris"],
+    ["pastillas", "Pastillas"], ["escalones", "Escalones"], ["cintas", "Cintas"], ["origami", "Origami"],
+    ["burbujas", "Burbujas"], ["sol", "Sol"], ["colinas", "Colinas"], ["arcos", "Arcos"],
+  ];
   const PALETTES = [
     ["costa", "Costa", ["#14233f", "#29385f", "#e8632c", "#f49560", "#f5d3b1", "#dab284", "#93b1cc", "#6096c2", "#115e9b", "#023060"]],
     ["atardecer", "Atardecer", ["#10232f", "#1e3c44", "#365f62", "#d6ae7f", "#d6843a", "#c9642a", "#b33a1a", "#7a1e0d"]],
@@ -335,6 +339,14 @@ button:disabled { opacity: 0.6; cursor: progress; }
     ["neon", "Neón", ["#0d0221", "#261447", "#541388", "#d90368", "#f75c03", "#f1c40f"]],
     ["menta", "Menta", ["#0b2b26", "#163832", "#235347", "#8eb69b", "#daf1de", "#f6fbf4"]],
     ["arena", "Arena", ["#3b2f2f", "#6b4f3f", "#a47551", "#d0b49f", "#e4d4c8", "#f6efe8"]],
+    ["bauhaus", "Bauhaus", ["#f1e9da", "#1f1f1f", "#2b4c7e", "#e9c46a", "#e85d3a"]],
+    ["aurora", "Aurora", ["#0b1026", "#1b2a4a", "#1f5f6b", "#2fa38a", "#7be0a8", "#d4f5c9"]],
+    ["sorbete", "Sorbete", ["#2d2a4a", "#6c5b9e", "#c9a7eb", "#ffb3c6", "#ffd6a5", "#fdffb6"]],
+    ["mediterraneo", "Mediterráneo", ["#0a2540", "#124e78", "#1f8fb5", "#f2e8cf", "#f4a259", "#bc4b51"]],
+    ["miel", "Miel", ["#2b1d0e", "#5c3a12", "#a8641c", "#e09f3e", "#f3c969", "#fff1cf"]],
+    ["granada", "Granada", ["#1a0a12", "#3d0f22", "#7a1b3a", "#c0394f", "#f28c7d", "#fcd5c9"]],
+    ["tropical", "Tropical", ["#062925", "#044a42", "#3a9188", "#b8e1dd", "#f9e0ae", "#fc8b5e", "#ea5455"]],
+    ["grafito", "Grafito", ["#111418", "#232a31", "#3a4652", "#6b7a87", "#aab6bf", "#e3e8ec"]],
     ["mono", "Monocromo", null],
   ];
 
@@ -691,6 +703,127 @@ button:disabled { opacity: 0.6; cursor: progress; }
           }
           ctx.lineTo(W + 2 * P, H + 2 * P + H); ctx.lineTo(-2 * P, H + 2 * P + H); ctx.closePath();
           ctx.fillStyle = css(cols[i]); ctx.fill();
+        }
+      } else if (st.shape === "bauhaus") {
+        // Tile grid: each cell gets a background and one geometric motif, Bauhaus poster style.
+        const g = S * 9, acc = cols.length > 2 ? cols.slice(1) : cols, TAU = Math.PI * 2;
+        const pick = (r, not) => { let c, t = 0; do { c = acc[Math.floor(r() * acc.length)]; } while (c === not && ++t < 8); return c; };
+        for (let j = 0; j * g < H; j++) for (let i = 0; i * g < W; i++) {
+          const r = mulberry32(st.seed * 131 + i * 7919 + j * 104729);
+          const bg = pick(r), fg = pick(r, bg), m = Math.floor(r() * 6), rot = Math.floor(r() * 4);
+          ctx.fillStyle = css(bg); ctx.fillRect(i * g, j * g, g + 0.6, g + 0.6);
+          ctx.save(); ctx.translate(i * g + g / 2, j * g + g / 2); ctx.rotate(rot * Math.PI / 2); ctx.translate(-g / 2, -g / 2);
+          ctx.beginPath(); ctx.fillStyle = css(fg);
+          if (m === 0) { ctx.moveTo(0, 0); ctx.arc(0, 0, g, 0, Math.PI / 2); }
+          else if (m === 1) { ctx.arc(g / 2, 0, g / 2, 0, Math.PI); }
+          else if (m === 2) { ctx.arc(g / 2, g / 2, g * 0.36, 0, TAU); }
+          else if (m === 3) { ctx.moveTo(0, 0); ctx.lineTo(g, 0); ctx.lineTo(0, g); ctx.closePath(); }
+          else if (m === 4) { ctx.moveTo(0, 0); ctx.arc(0, 0, g / 2, 0, Math.PI / 2); ctx.moveTo(g, g); ctx.arc(g, g, g / 2, Math.PI, Math.PI * 1.5); }
+          else { for (let b = 0; b < 3; b++) ctx.rect(0, b * g / 3 + g / 12, g, g / 6); }
+          ctx.fill();
+          if (m === 2 && r() < 0.5) { ctx.beginPath(); ctx.fillStyle = css(bg); ctx.arc(g / 2, g / 2, g * 0.15, 0, TAU); ctx.fill(); }
+          ctx.restore();
+        }
+      } else if (st.shape === "arcoiris") {
+        // Rows of 70s rainbow arches, every other row shifted half a tile.
+        const R = S * 5.5, n = Math.max(2, Math.min(N - 1, 6)), bw = R / (n + 0.7);
+        for (let j = 0; (j - 1) * R < H; j++) {
+          const yb = (j + 1) * R, off = (j & 1) ? R : 0;
+          for (let x = -2 * R + off; x < W + 2 * R; x += 2 * R) {
+            for (let q = 0; q <= n; q++) {
+              ctx.beginPath(); ctx.arc(x + R, yb, R - q * bw, Math.PI, 0); ctx.closePath();
+              ctx.fillStyle = css(q === n ? cols[0] : cols[1 + (q % (N - 1))]); ctx.fill();
+            }
+          }
+        }
+      } else if (st.shape === "pastillas") {
+        // Diagonal lanes of rounded capsules with random lengths.
+        const h = S * 4.2, gap = h * 0.38, D = Math.hypot(W, H);
+        const capsule = (x, y, len) => { const rr = h / 2; ctx.moveTo(x + rr, y); ctx.lineTo(x + len - rr, y); ctx.arc(x + len - rr, y + rr, rr, -Math.PI / 2, Math.PI / 2); ctx.lineTo(x + rr, y + h); ctx.arc(x + rr, y + rr, rr, Math.PI / 2, Math.PI * 1.5); ctx.closePath(); };
+        ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-Math.PI / 6);
+        let lane = 0;
+        for (let y = -D / 2 - h; y < D / 2 + h; y += h + gap, lane++) {
+          const r = mulberry32(st.seed * 977 + lane * 15485863);
+          let x = -D / 2 - r() * h * 6;
+          while (x < D / 2 + h) {
+            const len = h * (1.5 + r() * 6);
+            ctx.beginPath(); capsule(x, y, len);
+            ctx.fillStyle = css(cols[1 + Math.floor(r() * (N - 1))]); ctx.fill();
+            x += len + gap;
+          }
+        }
+        ctx.restore();
+      } else if (st.shape === "feston") {
+        // Concentric scalloped "cookie" shapes, each layer twisted a little.
+        const cx = W * (0.25 + rng() * 0.5), cy = H * (0.25 + rng() * 0.5);
+        const R = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) * 1.08, amp = S * 1.8;
+        for (let i = 1; i < N; i++) {
+          const rad = R * (1 - (i - 1) / N) * 0.97, lobes = Math.max(6, Math.round(rad / (S * 7))), ph = i * 0.9;
+          ctx.beginPath();
+          const steps = Math.max(360, lobes * 24);
+          for (let a = 0; a <= steps; a++) {
+            const t = a / steps * Math.PI * 2, rr = rad + amp * Math.cos(t * lobes + ph);
+            a ? ctx.lineTo(cx + rr * Math.cos(t), cy + rr * Math.sin(t)) : ctx.moveTo(cx + rr * Math.cos(t), cy + rr * Math.sin(t));
+          }
+          ctx.closePath(); ctx.fillStyle = css(cols[i]); ctx.fill();
+        }
+      } else if (st.shape === "sol") {
+        // Retro sunburst: alternating rays plus a ringed sun.
+        const cx = W * (0.15 + rng() * 0.7), cy = H * (0.7 + rng() * 0.25), R = Math.hypot(W, H) * 1.3;
+        const rays = 32, a0 = rng();
+        ctx.beginPath(); ctx.fillStyle = css(cols[1]);
+        for (let i = 0; i < rays; i += 2) {
+          ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, (i + a0) / rays * Math.PI * 2, (i + 1 + a0) / rays * Math.PI * 2); ctx.closePath();
+        }
+        ctx.fill();
+        const rings = Math.max(1, N - 2), R0 = S * 22;
+        for (let q = 0; q < rings; q++) {
+          ctx.beginPath(); ctx.arc(cx, cy, R0 * (1 - q / (rings + 0.4)), 0, Math.PI * 2);
+          ctx.fillStyle = css(cols[2 + q] || cols[N - 1]); ctx.fill();
+        }
+      } else if (st.shape === "burbujas") {
+        // Overlapping ringed discs, big ones underneath.
+        const count = Math.max(12, Math.round(W * H / (S * S * 230)));
+        const list = [];
+        for (let i = 0; i < count; i++) list.push([rng() * W, rng() * H, S * (2 + Math.pow(rng(), 2.2) * 26), Math.floor(rng() * (N - 1))]);
+        list.sort((a, b) => b[2] - a[2]);
+        for (const [x, y, r0, ci] of list)
+          for (let q = 0; q < 3; q++) {
+            ctx.beginPath(); ctx.arc(x, y, r0 * (1 - q * 0.3), 0, Math.PI * 2);
+            ctx.fillStyle = css(cols[1 + (ci + q) % (N - 1)]); ctx.fill();
+          }
+      } else if (st.shape === "cintas") {
+        // Thick rounded ribbons that ripple in a slow diagonal wave.
+        const D = Math.hypot(W, H), sp = S * 7, lam = S * (30 + rng() * 20), amp = S * 3.5;
+        ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-0.35); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = sp * 0.62;
+        let i = 0;
+        for (let y = -D / 2; y < D / 2 + sp; y += sp, i++) {
+          ctx.beginPath();
+          let first = true;
+          for (let x = -D / 2; x <= D / 2; x += S) {
+            const yy = y + amp * Math.sin(x / lam * Math.PI * 2 + i * 0.55);
+            if (first) { ctx.moveTo(x, yy); first = false; } else ctx.lineTo(x, yy);
+          }
+          ctx.strokeStyle = css(cols[1 + (i % (N - 1))]); ctx.stroke();
+        }
+        ctx.restore();
+      } else if (st.shape === "origami") {
+        // Low-poly facets coloured along a diagonal sweep of the palette.
+        const g = S * 9, nx = Math.ceil(W / g) + 2, ny = Math.ceil(H / g) + 2, pts = [];
+        for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) pts.push([(i - 0.5 + (rng() - 0.5) * 0.75) * g, (j - 0.5 + (rng() - 0.5) * 0.75) * g]);
+        const P = (i, j) => pts[j * nx + i];
+        const tri = (a, b, c) => {
+          const x = (a[0] + b[0] + c[0]) / 3, y = (a[1] + b[1] + c[1]) / 3;
+          let t = (x / W * 0.4 + y / H * 0.6) * (N - 1) + (rng() - 0.5) * 0.9;
+          t = Math.max(0, Math.min(N - 1, t)); const f = Math.floor(t);
+          const col = css(mix(cols[f], cols[Math.min(N - 1, f + 1)], t - f));
+          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.closePath();
+          ctx.fillStyle = col; ctx.strokeStyle = col; ctx.fill(); ctx.stroke();
+        };
+        ctx.lineWidth = 1 / k; ctx.lineJoin = "round";
+        for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+          const a = P(i, j), b = P(i + 1, j), c = P(i, j + 1), d = P(i + 1, j + 1);
+          if (rng() < 0.5) { tri(a, b, d); tri(a, d, c); } else { tri(a, b, c); tri(b, d, c); }
         }
       } else if (st.shape === "colinas") {
         // Layered rolling hills, each with its own pair of sine waves.
