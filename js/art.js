@@ -154,13 +154,13 @@ function renderArt(canvas, st, view) {
     // ---------------- abstract ----------------
     case "liquido": {
       // Marbled ink from nested domain warping.
-      const f = makeFbm(rng, 4), lut = makeLut(cols), sc = 1 / (S * 40), w = 3.2;
+      const f = makeFbm(rng, 3), lut = makeLut(cols), sc = 1 / (S * 115), w = 2.1;
       pixels(ctx, canvas, view, (X, Y, out) => {
         const x = X * sc, y = Y * sc;
         const qx = f(x, y), qy = f(x + 5.2, y + 1.3);
         const rx = f(x + w * qx + 1.7, y + w * qy + 9.2), ry = f(x + w * qx + 8.3, y + w * qy + 2.8);
         const v = f(x + w * rx, y + w * ry);
-        lut(clamp01(0.5 + 1.25 * v + 0.35 * qx), out);
+        lut(clamp01(0.5 + 1.45 * v + 0.35 * qx), out);
       });
       break;
     }
