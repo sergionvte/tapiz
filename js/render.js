@@ -253,7 +253,13 @@ function renderMaterial(canvas, st, view) {
   const ctx = canvas.getContext("2d");
   const cols = materialColors(st), N = cols.length;
   const css = (c) => `rgb(${c.map((v) => v.toFixed(1)).join(",")})`;
-  const u = Math.min(W, H) / 1080, S = st.size * u, g = S * 9, TAU = Math.PI * 2, ov = 1.5 / k; // ov: 1.5 canvas px overlap hides tile seams
+  const u = Math.min(W, H) / 1080, S = st.size * u, TAU = Math.PI * 2, ov = 0.5;
+  // Grid: a whole number of square-ish tiles across the short side (st.tiles) and down the long
+  // side. The app only offers tile counts whose cells stay square to within ~1.5 %.
+  const shortSide = Math.min(W, H), longSide = Math.max(W, H);
+  const nS = Math.max(1, Math.round(st.tiles || shortSide / (S * 9)));
+  const g = shortSide / nS, nL = Math.max(1, Math.round(longSide / g));
+  const nx = W <= H ? nS : nL, ny = W <= H ? nL : nS, gx = W / nx, gy = H / ny;
   const rng = mulberry32(st.seed * 9973 + 17);
   const inks = N > 2 ? cols.slice(1) : cols;
   const cellRng = (i, j) => mulberry32(st.seed * 131 + i * 7919 + j * 104729);
@@ -263,18 +269,22 @@ function renderMaterial(canvas, st, view) {
     ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   };
-  // Visit grid cells that intersect the visible part of the wallpaper.
-  const vx0 = Math.max(0, ox), vy0 = Math.max(0, oy), vx1 = Math.min(W, ox + canvas.width / k), vy1 = Math.min(H, oy + canvas.height / k);
-  // Whole number of tiles across and down, so the grid fits the screen exactly in either
-  // orientation; each tile is stretched by a few percent at most to absorb the remainder.
-  const nx = Math.max(1, Math.round(W / g)), ny = Math.max(1, Math.round(H / g)), gx = W / nx, gy = H / ny;
+  // Each tile is clipped to whole canvas pixels, so neighbouring tiles never leave a hairline seam.
   const eachCell = (fn) => {
-    for (let j = Math.max(0, Math.floor(vy0 / gy)); j < ny && j * gy < vy1; j++)
-      for (let i = Math.max(0, Math.floor(vx0 / gx)); i < nx && i * gx < vx1; i++) {
-        ctx.save(); ctx.translate(i * gx, j * gy); ctx.scale(gx / g, gy / g);
+    const cw = canvas.width, ch = canvas.height;
+    for (let j = 0; j < ny; j++) {
+      const y0 = Math.round((j * gy - oy) * k), y1 = Math.round(((j + 1) * gy - oy) * k);
+      if (y1 <= 0 || y0 >= ch) continue;
+      for (let i = 0; i < nx; i++) {
+        const x0 = Math.round((i * gx - ox) * k), x1 = Math.round(((i + 1) * gx - ox) * k);
+        if (x1 <= 0 || x0 >= cw || x1 <= x0 || y1 <= y0) continue;
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.beginPath(); ctx.rect(x0, y0, x1 - x0, y1 - y0); ctx.clip();
+        ctx.translate(x0, y0); ctx.scale((x1 - x0) / g, (y1 - y0) / g);
         fn(0, 0, cellRng(i, j), i, j);
         ctx.restore();
       }
+    }
   };
   const clipCell = (x, y) => { ctx.save(); ctx.beginPath(); ctx.rect(x, y, g + ov, g + ov); ctx.clip(); };
 
@@ -409,7 +419,7 @@ function renderMaterial(canvas, st, view) {
         else if (m === 2) { ctx.arc(g / 2, g / 2, g * 0.36, 0, TAU); }
         else if (m === 3) { ctx.moveTo(0, 0); ctx.lineTo(g, 0); ctx.lineTo(0, g); ctx.closePath(); }
         else if (m === 4) { ctx.moveTo(0, 0); ctx.arc(0, 0, g / 2, 0, Math.PI / 2); ctx.moveTo(g, g); ctx.arc(g, g, g / 2, Math.PI, Math.PI * 1.5); }
-        else { for (let b = 0; b < 3; b++) ctx.rect(0, b * g / 3 + g / 12, g, g / 6); }
+        else { for (let b = 0; b < 3; b++) ctx.rect(-ov, (2 * b + 1) * g / 7, g + 2 * ov, g / 7); } // 7 equal bands
         ctx.fill();
         if (m === 2 && r() < 0.5) { ctx.beginPath(); ctx.fillStyle = css(bg); ctx.arc(g / 2, g / 2, g * 0.15, 0, TAU); ctx.fill(); }
         ctx.restore();

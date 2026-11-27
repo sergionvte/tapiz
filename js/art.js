@@ -9,11 +9,15 @@ const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 function pixels(ctx, canvas, view, fn) {
   const w = canvas.width, h = canvas.height, k = view.k ?? 1, ox = view.ox ?? 0, oy = view.oy ?? 0;
   const img = ctx.createImageData(w, h), d = img.data, out = [0, 0, 0];
+  let seed = 0x2545f491;
   for (let py = 0, o = 0; py < h; py++) {
     const Y = oy + (py + 0.5) / k;
     for (let px = 0; px < w; px++, o += 4) {
       fn(ox + (px + 0.5) / k, Y, out);
-      d[o] = out[0]; d[o + 1] = out[1]; d[o + 2] = out[2]; d[o + 3] = 255;
+      // Triangular dither of ±1 level before rounding: smooth gradients without steps.
+      seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
+      const n = ((seed & 0xffff) + ((seed >>> 16) & 0xffff)) / 65535 - 1;
+      d[o] = out[0] + n; d[o + 1] = out[1] + n; d[o + 2] = out[2] + n; d[o + 3] = 255;
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -66,30 +70,41 @@ function renderArt(canvas, st, view) {
     case "malla": pixels(ctx, canvas, view, makeMesh(rng, cols, W, H, S)); break;
 
     case "aurora": {
-      // Light ribbons with a sharp lower hem fading upwards, over a deep sky. Light is added
-      // with a soft roll-off so bright colours never clip.
-      const skyTop = (dark ? mix(cols[0], [0, 0, 0], 0.7) : mix(cols[0], [255, 255, 255], 0.2)).map(srgbToLin);
-      const skyBot = (dark ? mix(cols[0], [0, 0, 0], 0.35) : cols[0]).map(srgbToLin);
+      // Folded curtains of light: a sharp lower hem, colour shifting with height, rays of
+      // varying length, and a starry sky. Light is added with a soft roll-off, so it never clips.
+      const lin = (c) => c.map(srgbToLin);
+      const skyTop = lin(dark ? mix(cols[0], [0, 0, 0], 0.8) : mix(cols[0], [255, 255, 255], 0.15));
+      const skyBot = lin(dark ? mix(cols[0], [0, 0, 0], 0.4) : cols[0]);
       const nC = Math.max(1, Math.min(3, N - 2)), curt = [];
       for (let i = 0; i < nC; i++) {
-        curt.push({ col: cols[Math.max(1, N - 2 - i)].map(srgbToLin), base: H * (0.36 + 0.14 * i + rng() * 0.06),
-          amp: H * (0.1 + rng() * 0.05), w: S * (2.6 + rng() * 2), gain: 0.9 - i * 0.2,
-          shape: makeFbm(rng, 3), fade: makeFbm(rng, 2), ph: rng() * 50 });
+        const hem = cols[Math.max(1, N - 2 - i)], top = cols[Math.max(1, N - 4 - i)];
+        curt.push({ hem: lin(hem), top: lin(top), base: H * (0.42 + 0.12 * i + rng() * 0.05), amp: H * (0.11 + rng() * 0.05),
+          w: S * (2 + rng() * 1.4), gain: 0.95 - i * 0.22, shape: makeFbm(rng, 3), fade: makeFbm(rng, 2), rays: makeSimplex(rng), ph: rng() * 50 });
       }
-      const lam = 1 / (S * 55);
+      const lam = 1 / (S * 48), starCell = S * 1.2, seed = st.seed;
       pixels(ctx, canvas, view, (X, Y, out) => {
         const t = Y / H;
         let r = 0, g = 0, b = 0;
         for (const c of curt) {
           const dy = Y - (c.base + c.amp * c.shape(X * lam + c.ph, c.ph));
-          let I = dy > 0 ? Math.exp(-(dy * dy) / (c.w * c.w * 0.25)) : Math.exp(dy / (c.w * 3.2));
-          I *= c.gain * clamp01(0.3 + 1.3 * c.fade(X / (S * 90), c.ph)) * (0.86 + 0.14 * c.shape(X / (S * 7), c.ph + 9));
-          r += c.col[0] * I; g += c.col[1] * I; b += c.col[2] * I;
+          const reach = c.w * (3.5 + 2.5 * c.fade(X / (S * 30), c.ph + 4));
+          let I = dy > 0 ? Math.exp(-(dy * dy) / (c.w * c.w * 0.3)) : Math.exp(dy / reach);
+          I *= c.gain * clamp01(0.25 + 1.3 * c.fade(X / (S * 85), c.ph)) * (0.88 + 0.12 * c.rays(X / (S * 2.2), Y / (S * 45)));
+          const m = clamp01(-dy / (c.w * 6));
+          r += (c.hem[0] + (c.top[0] - c.hem[0]) * m) * I; g += (c.hem[1] + (c.top[1] - c.hem[1]) * m) * I; b += (c.hem[2] + (c.top[2] - c.hem[2]) * m) * I;
         }
-        const sr = skyTop[0] + (skyBot[0] - skyTop[0]) * t, sg = skyTop[1] + (skyBot[1] - skyTop[1]) * t, sb = skyTop[2] + (skyBot[2] - skyTop[2]) * t;
-        out[0] = linToSrgb(sr + (1 - sr) * (1 - Math.exp(-r * 1.6)));
-        out[1] = linToSrgb(sg + (1 - sg) * (1 - Math.exp(-g * 1.6)));
-        out[2] = linToSrgb(sb + (1 - sb) * (1 - Math.exp(-b * 1.6)));
+        let sr = skyTop[0] + (skyBot[0] - skyTop[0]) * t, sg = skyTop[1] + (skyBot[1] - skyTop[1]) * t, sb = skyTop[2] + (skyBot[2] - skyTop[2]) * t;
+        if (dark) { // sparse stars, fading towards the horizon
+          const ci = Math.floor(X / starCell), cj = Math.floor(Y / starCell), h = hash3(ci, cj, seed);
+          if (h > 0.982) {
+            const sx = (ci + 0.5) * starCell, sy = (cj + 0.5) * starCell, dd = ((X - sx) ** 2 + (Y - sy) ** 2) / (S * S * 0.03);
+            const s = Math.exp(-dd) * (h - 0.982) / 0.018 * 0.5 * clamp01(1 - t * 1.4);
+            sr += s; sg += s; sb += s;
+          }
+        }
+        out[0] = linToSrgb(sr + (1 - sr) * (1 - Math.exp(-r * 1.5)));
+        out[1] = linToSrgb(sg + (1 - sg) * (1 - Math.exp(-g * 1.5)));
+        out[2] = linToSrgb(sb + (1 - sb) * (1 - Math.exp(-b * 1.5)));
       });
       break;
     }
@@ -110,12 +125,18 @@ function renderArt(canvas, st, view) {
     }
 
     case "seda": {
-      // Silk: smooth folds from a warped field, banded softly across the palette.
-      const fa = makeFbm(rng, 3), fb = makeFbm(rng, 3), lut = makeLut(cols), sc = 1 / (S * 58);
+      // Silk: a smooth folded surface. Colour follows the height of the folds and a raking
+      // light adds sheen on the crests and shade in the troughs.
+      const fa = makeFbm(rng, 3), fb = makeFbm(rng, 3), lut = makeLut(cols), sc = 1 / (S * 75);
+      const la = rng() * Math.PI * 2, lx = Math.cos(la), ly = Math.sin(la), e = 0.01;
+      const height = (x, y) => { const qx = fa(x, y), qy = fb(x + 3.1, y - 1.7); return fa(x + 1.3 * qx + 7.2, y + 1.3 * qy + 1.3) + 0.4 * qx; };
       pixels(ctx, canvas, view, (X, Y, out) => {
-        const x = X * sc, y = Y * sc, qx = fa(x, y), qy = fb(x + 3.1, y - 1.7);
-        const v = fa(x + 1.7 * qx + 7.2, y + 1.7 * qy + 1.3);
-        lut(0.5 + 0.5 * Math.sin(v * 4 + y * 0.9 + qx * 1.4), out);
+        const x = X * sc, y = Y * sc, h = height(x, y);
+        const gx = (height(x + e, y) - h) / e, gy = (height(x, y + e) - h) / e;
+        const light = Math.max(-1, Math.min(1, (gx * lx + gy * ly) * 0.22));
+        lut(clamp01(0.5 + 1.15 * h), out);
+        if (light > 0) { const m = light * 0.45; out[0] += (255 - out[0]) * m; out[1] += (255 - out[1]) * m; out[2] += (255 - out[2]) * m; }
+        else { const m = 1 + light * 0.4; out[0] *= m; out[1] *= m; out[2] *= m; }
       });
       break;
     }
@@ -142,11 +163,12 @@ function renderArt(canvas, st, view) {
     }
 
     case "lineal": {
-      // Multi-stop gradient with eased stops and a whisper of warp.
+      // Multi-stop gradient with eased stops, bowed gently so it doesn't look flat.
       const a = rng() * Math.PI, ca = Math.cos(a), sa = Math.sin(a), L = Math.abs(W * ca) + Math.abs(H * sa);
-      const lut = makeLut(cols), f = makeFbm(rng, 2), sc = 1 / (S * 80);
+      const lut = makeLut(cols), bow = 0.05 + rng() * 0.06;
       pixels(ctx, canvas, view, (X, Y, out) => {
-        lut(clamp01(((X - W / 2) * ca + (Y - H / 2) * sa) / L + 0.5 + 0.06 * f(X * sc, Y * sc)), out);
+        const dx = X - W / 2, dy = Y - H / 2, along = (dx * ca + dy * sa) / L, across = (-dx * sa + dy * ca) / L;
+        lut(clamp01(along + 0.5 + bow * Math.cos(across * Math.PI)), out);
       });
       break;
     }

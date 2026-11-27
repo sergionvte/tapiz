@@ -39,11 +39,15 @@ function makeFbm(rng, octaves = 4) {
 // ---- Oklab ----
 const srgbToLin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
 const LIN2SRGB = (() => {
-  const t = new Uint8ClampedArray(4096);
-  for (let i = 0; i < 4096; i++) { const v = i / 4095; t[i] = Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055)); }
+  // Float output (0–255, unrounded): pixels() dithers before quantising, which hides banding.
+  const t = new Float32Array(4097);
+  for (let i = 0; i <= 4096; i++) { const v = i / 4096; t[i] = 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055); }
   return t;
 })();
-const linToSrgb = (v) => LIN2SRGB[v <= 0 ? 0 : v >= 1 ? 4095 : (v * 4095 + 0.5) | 0];
+const linToSrgb = (v) => {
+  if (v <= 0) return 0; if (v >= 1) return 255;
+  const x = v * 4096, i = x | 0; return LIN2SRGB[i] + (LIN2SRGB[i + 1] - LIN2SRGB[i]) * (x - i);
+};
 
 function rgbToOklab(c) {
   const r = srgbToLin(c[0]), g = srgbToLin(c[1]), b = srgbToLin(c[2]);
@@ -64,7 +68,7 @@ function oklabInto(L, A, B, out) {
 
 // Palette lookup table interpolated in Oklab, eased between stops so no seams or kinks show.
 function makeLut(cols, size = 1024, ease = true) {
-  const labs = cols.map(rgbToOklab), n = labs.length - 1, lut = new Uint8ClampedArray(size * 3), tmp = [0, 0, 0];
+  const labs = cols.map(rgbToOklab), n = labs.length - 1, lut = new Float32Array(size * 3), tmp = [0, 0, 0];
   for (let i = 0; i < size; i++) {
     const x = i / (size - 1) * n, k = Math.min(n - 1, Math.floor(x));
     let f = x - k; if (ease) f = f * f * (3 - 2 * f);
@@ -73,8 +77,8 @@ function makeLut(cols, size = 1024, ease = true) {
     lut[i * 3] = tmp[0]; lut[i * 3 + 1] = tmp[1]; lut[i * 3 + 2] = tmp[2];
   }
   const last = size - 1;
-  return (t, out) => {
-    const i = (t <= 0 ? 0 : t >= 1 ? last : (t * last + 0.5) | 0) * 3;
-    out[0] = lut[i]; out[1] = lut[i + 1]; out[2] = lut[i + 2];
+  return (t, out) => { // linear interpolation between entries keeps values continuous
+    const x = t <= 0 ? 0 : t >= 1 ? last : t * last, i = Math.min(last - 1, x | 0), f = x - i, a = i * 3, b = a + 3;
+    out[0] = lut[a] + (lut[b] - lut[a]) * f; out[1] = lut[a + 1] + (lut[b + 1] - lut[a + 1]) * f; out[2] = lut[a + 2] + (lut[b + 2] - lut[a + 2]) * f;
   };
 }

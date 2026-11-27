@@ -3,7 +3,7 @@
   const $ = (id) => document.getElementById(id);
 
   // Everything that defines a design (shared by favourites and links).
-  const DESIGN_KEYS = ["style", "theme", "base", "bottomAuto", "bottom", "dotAuto", "dot", "pattern", "shape", "abstract",
+  const DESIGN_KEYS = ["tiles", "style", "theme", "base", "bottomAuto", "bottom", "dotAuto", "dot", "pattern", "shape", "abstract",
     "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft"];
 
   // ---------- state ----------
@@ -32,6 +32,29 @@
     if (!has(PALETTES, state.palette)) state.palette = "costa";
     if (!Array.isArray(state.custom) || state.custom.length < 2 || !state.custom.every((c) => /^#[0-9a-f]{6}$/i.test(c))) state.custom = DEFAULT_CUSTOM.slice();
     state.layers = Math.max(3, Math.min(10, +state.layers || 6));
+  }
+
+  // Grid-based Material designs choose a tile count instead of a free scale.
+  const GRID_SHAPES = ["bauhaus", "bloques", "truchet", "dianas", "tejido", "colcha", "abanicos"];
+  const isGrid = () => state.style === "material" && GRID_SHAPES.includes(state.shape);
+  // Tile counts (across the short side) whose cells stay square to within tol on this screen.
+  function tileOptions() {
+    const { w, h } = dims(), sh = Math.min(w, h), lo = Math.max(w, h);
+    for (const tol of [0.012, 0.02, 0.03, 0.05]) {
+      const opts = [];
+      for (let n = 2; n <= 24; n++) {
+        const cell = sh / n, m = Math.max(1, Math.round(lo / cell));
+        if (Math.abs(lo / m - cell) / cell <= tol) opts.push({ n, m, label: w <= h ? `${n} × ${m}` : `${m} × ${n}` });
+      }
+      if (opts.length >= 6 || tol === 0.05) return opts.reverse(); // left = many small tiles
+    }
+  }
+  function snapTiles(opts) {
+    const want = state.tiles || Math.round(1080 / (state.size * 9));
+    let best = opts[0];
+    for (const o of opts) if (Math.abs(o.n - want) < Math.abs(best.n - want)) best = o;
+    state.tiles = best.n;
+    return opts.indexOf(best);
   }
 
   const designState = (st = state) => Object.fromEntries(DESIGN_KEYS.map((k) => [k, st[k]]));
@@ -208,7 +231,7 @@
       state.style = id; syncInputs(); draw();
     }));
     PATTERNS.forEach(([id, name]) => tile($("patterns"), "pat", "pattern", id, name, 168, 168, () => { state.pattern = id; syncInputs(); draw(false); }));
-    SHAPES.forEach(([id, name]) => tile($("grid-material"), "pat", "shape", id, name, 168, 168, () => { state.shape = id; draw(false); drawStyleCards(); }));
+    SHAPES.forEach(([id, name]) => tile($("grid-material"), "pat", "shape", id, name, 168, 168, () => { state.shape = id; syncScale(); draw(false); drawStyleCards(); }));
     ABSTRACTS.forEach(([id, name]) => tile($("grid-abstract"), "pat", "abstract", id, name, 168, 168, () => { state.abstract = id; draw(false); drawStyleCards(); }));
     GRADIENTS.forEach(([id, name]) => tile($("grid-gradient"), "pat", "gradient", id, name, 168, 168, () => { state.gradient = id; draw(false); drawStyleCards(); }));
 
@@ -292,12 +315,25 @@
     const check = (id) => { const el = $(id); if (el) el.checked = true; };
     check("style-" + state.style); check("pattern-" + state.pattern); check("shape-" + state.shape);
     check("abstract-" + state.abstract); check("gradient-" + state.gradient); check("pal-" + state.palette);
-    Object.keys(sliders).forEach((k) => { $(k).value = state[k]; $(k + "Out").textContent = sliders[k](state[k]); });
+    Object.keys(sliders).forEach((k) => { if (k !== "size") { $(k).value = state[k]; $(k + "Out").textContent = sliders[k](state[k]); } });
+    syncScale();
     $("seedOut").textContent = `Variación n.º ${state.seed}`;
     $("newShape3").textContent = state.style === "pattern" ? "Otro" : "Variar";
     $("newShape3").title = state.style === "pattern" ? "Combinación aleatoria de patrón" : "Genera otra versión del mismo diseño";
     paintStrips();
     renderFavs();
+  }
+
+  function syncScale() {
+    const el = $("size");
+    if (isGrid()) {
+      const opts = tileOptions(), idx = snapTiles(opts);
+      el.min = 0; el.max = opts.length - 1; el.step = 1; el.value = idx;
+      $("sizeOut").textContent = `${opts[idx].label} baldosas`;
+    } else {
+      el.min = 8; el.max = 80; el.step = 0.1; el.value = state.size;
+      $("sizeOut").textContent = "";
+    }
   }
 
   function setTab(tab) { state.tab = tab; syncInputs(); draw(); }
@@ -311,7 +347,7 @@
     });
     ["cw", "ch"].forEach((id) => $(id).addEventListener("input", (e) => {
       const v = parseInt(e.target.value, 10);
-      if (v >= 200 && v <= MAX_SIDE) { state[id] = v; draw(false); }
+      if (v >= 200 && v <= MAX_SIDE) { state[id] = v; syncScale(); draw(false); }
     }));
     $("rotate").addEventListener("click", () => {
       if (state.preset === "custom") [state.cw, state.ch] = [state.ch, state.cw];
@@ -332,7 +368,12 @@
       state.dotAuto = e.target.checked; syncInputs(); draw();
     });
     $("dot").addEventListener("input", (e) => { state.dot = e.target.value; draw(); });
-    Object.keys(sliders).forEach((k) => $(k).addEventListener("input", (e) => {
+    $("size").addEventListener("input", (e) => {
+      if (isGrid()) { const o = tileOptions()[+e.target.value]; if (o) { state.tiles = o.n; $("sizeOut").textContent = `${o.label} baldosas`; } }
+      else state.size = +e.target.value;
+      draw();
+    });
+    Object.keys(sliders).filter((k) => k !== "size").forEach((k) => $(k).addEventListener("input", (e) => {
       state[k] = +e.target.value; $(k + "Out").textContent = sliders[k](state[k]);
       draw(k !== "grad" && k !== "grain");
     }));
@@ -382,7 +423,7 @@
     Object.assign(state, {
       style, theme: Math.random() < 0.75 ? "dark" : "light", seed: Math.floor(Math.random() * 100000),
       base: pick(SWATCHES)[1], pattern: pick(PATTERNS)[0], shape: pick(SHAPES)[0], abstract: pick(ABSTRACTS)[0], gradient: pick(GRADIENTS)[0],
-      palette: pal, layers: Math.min(10, paletteLength(pal)), bottomAuto: true, dotAuto: true,
+      palette: pal, layers: Math.min(10, paletteLength(pal)), bottomAuto: true, dotAuto: true, tiles: 0,
       size: style === "pattern" ? Math.round(14 + Math.random() * 26) : Math.round(15 + Math.random() * 15),
       dotSize: Math.round(25 + Math.random() * 30), contrast: Math.round(60 + Math.random() * 40),
     });
