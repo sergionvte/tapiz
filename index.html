@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Crea fondos de pantalla de patrón a la resolución exacta de tu pantalla.">
+<meta name="description" content="Crea fondos de pantalla con patrones y formas a la resolución exacta de tu pantalla.">
 <meta name="theme-color" content="#eceef4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0c15" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Perforado">
+<meta name="apple-mobile-web-app-title" content="Tapiz">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<title>Perforado</title>
+<title>Tapiz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap">
 <style>
@@ -130,6 +130,15 @@ input[type="number"] { width: 100%; font-family: var(--font-mono); font-size: 0.
 .pat input:checked ~ span { color: var(--fg); font-weight: 600; }
 .pat input:focus-visible ~ canvas { outline: 2px dashed var(--accent); }
 
+.palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.pal { position: relative; display: grid; gap: 6px; padding: 8px; border-radius: 11px; border: 1px solid var(--line); cursor: pointer; background: var(--sunk); }
+.pal input { position: absolute; opacity: 0; pointer-events: none; }
+.pal .strip { display: flex; height: 26px; border-radius: 7px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--ring); }
+.pal .strip i { flex: 1; }
+.pal span { font-size: 0.8rem; color: var(--muted); }
+.pal:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.pal:has(input:checked) span { color: var(--fg); font-weight: 600; }
+.pal:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
 .slider output { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
@@ -161,8 +170,8 @@ button:disabled { opacity: 0.6; cursor: progress; }
 <body>
 <div class="app">
   <header class="top">
-    <h1>Perforado</h1>
-    <p>Fondos de pantalla de patrón, a la resolución exacta de tu pantalla.</p>
+    <h1>Tapiz</h1>
+    <p>Fondos de pantalla con patrones y formas, a la resolución exacta de tu pantalla.</p>
   </header>
 
   <main class="layout">
@@ -204,20 +213,39 @@ button:disabled { opacity: 0.6; cursor: progress; }
       </fieldset>
 
       <fieldset class="group">
+        <legend>Estilo</legend>
+        <div class="seg full" role="radiogroup" aria-label="Estilo">
+          <input type="radio" name="style" id="stylePattern" value="pattern"><label for="stylePattern">Patrón</label>
+          <input type="radio" name="style" id="styleMaterial" value="material"><label for="styleMaterial">Material</label>
+        </div>
+      </fieldset>
+
+      <fieldset class="group" data-only="material">
+        <legend>Forma</legend>
+        <div class="patterns" id="shapes"></div>
+        <div class="row"><button type="button" class="ghost small" id="newShape">Nueva variación</button></div>
+      </fieldset>
+
+      <fieldset class="group" data-only="material">
+        <legend>Paleta</legend>
+        <div class="palettes" id="palettes"></div>
+      </fieldset>
+
+      <fieldset class="group" id="colorGroup">
         <legend>Color</legend>
         <div class="swatches" id="swatches"></div>
         <div class="color-field"><label for="base">Color base</label><input type="color" id="base"></div>
-        <div class="color-field">
+        <div class="color-field" data-only="pattern">
           <label for="bottom">Color inferior</label>
           <span class="row"><span class="check"><input type="checkbox" id="bottomAuto"><label for="bottomAuto">Automático</label></span><input type="color" id="bottom"></span>
         </div>
-        <div class="color-field">
+        <div class="color-field" data-only="pattern">
           <label for="dot">Color del patrón</label>
           <span class="row"><span class="check"><input type="checkbox" id="dotAuto"><label for="dotAuto">Automático</label></span><input type="color" id="dot"></span>
         </div>
       </fieldset>
 
-      <fieldset class="group">
+      <fieldset class="group" data-only="pattern">
         <legend>Patrón</legend>
         <div class="patterns" id="patterns"></div>
       </fieldset>
@@ -225,11 +253,12 @@ button:disabled { opacity: 0.6; cursor: progress; }
       <fieldset class="group">
         <legend>Ajustes</legend>
         <div class="slider"><label for="size">Escala</label><output for="size" id="sizeOut"></output><input type="range" id="size" min="8" max="80" step="0.1"></div>
-        <div class="slider"><label for="dotSize">Grosor del patrón</label><output for="dotSize" id="dotSizeOut"></output><input type="range" id="dotSize" min="10" max="80" step="1"></div>
-        <div class="slider"><label for="contrast">Contraste</label><output for="contrast" id="contrastOut"></output><input type="range" id="contrast" min="10" max="100" step="1"></div>
-        <div class="slider"><label for="grad">Degradado</label><output for="grad" id="gradOut"></output><input type="range" id="grad" min="0" max="100" step="1"></div>
+        <div class="slider" data-only="pattern"><label for="dotSize">Grosor del patrón</label><output for="dotSize" id="dotSizeOut"></output><input type="range" id="dotSize" min="10" max="80" step="1"></div>
+        <div class="slider" data-only="pattern"><label for="contrast">Contraste</label><output for="contrast" id="contrastOut"></output><input type="range" id="contrast" min="10" max="100" step="1"></div>
+        <div class="slider" data-only="pattern"><label for="grad">Degradado</label><output for="grad" id="gradOut"></output><input type="range" id="grad" min="0" max="100" step="1"></div>
+        <div class="slider" data-only="material"><label for="layers">Capas</label><output for="layers" id="layersOut"></output><input type="range" id="layers" min="3" max="10" step="1"></div>
         <div class="slider"><label for="grain">Grano</label><output for="grain" id="grainOut"></output><input type="range" id="grain" min="0" max="100" step="1"></div>
-        <div class="slider"><label for="soft">Desenfoque</label><output for="soft" id="softOut"></output><input type="range" id="soft" min="0" max="100" step="1"></div>
+        <div class="slider" data-only="pattern"><label for="soft">Desenfoque</label><output for="soft" id="softOut"></output><input type="range" id="soft" min="0" max="100" step="1"></div>
       </fieldset>
 
       <div class="actions">
@@ -295,19 +324,36 @@ button:disabled { opacity: 0.6; cursor: progress; }
     ["Vino", "#36151f"], ["Frambuesa", "#5e1638"], ["Ciruela", "#2b1738"], ["Lavanda", "#4a3a78"],
     ["Pizarra", "#1f2a33"], ["Grafito", "#24262c"], ["Carbón", "#121214"], ["Arena", "#6e6450"],
   ];
+  const SHAPES = [["manchas", "Manchas"], ["escalones", "Escalones"], ["colinas", "Colinas"], ["arcos", "Arcos"]];
+  const PALETTES = [
+    ["costa", "Costa", ["#14233f", "#29385f", "#e8632c", "#f49560", "#f5d3b1", "#dab284", "#93b1cc", "#6096c2", "#115e9b", "#023060"]],
+    ["atardecer", "Atardecer", ["#10232f", "#1e3c44", "#365f62", "#d6ae7f", "#d6843a", "#c9642a", "#b33a1a", "#7a1e0d"]],
+    ["retro", "Retro", ["#264653", "#2a9d8f", "#8ab17d", "#e9c46a", "#f4a261", "#e76f51"]],
+    ["oceano", "Océano", ["#04192b", "#0b3352", "#145a80", "#2a8aaa", "#6fc2c9", "#c9e8df", "#f4efdc"]],
+    ["bosque", "Bosque", ["#0f2018", "#1f3b2b", "#3d6347", "#8aa66f", "#d8d3a1", "#e9b770", "#c8743a"]],
+    ["lavanda", "Lavanda", ["#1b1533", "#2e2557", "#51438a", "#8a7cc7", "#c7b9ec", "#f0c9d6", "#e58fa6"]],
+    ["neon", "Neón", ["#0d0221", "#261447", "#541388", "#d90368", "#f75c03", "#f1c40f"]],
+    ["menta", "Menta", ["#0b2b26", "#163832", "#235347", "#8eb69b", "#daf1de", "#f6fbf4"]],
+    ["arena", "Arena", ["#3b2f2f", "#6b4f3f", "#a47551", "#d0b49f", "#e4d4c8", "#f6efe8"]],
+    ["mono", "Monocromo", null],
+  ];
+
   // Values measured from the original wallpaper (1080 px wide): cell 20.12, hole radius 3.9.
   const ORIGINAL = { theme: "dark", base: "#1c1b3c", bottomAuto: true, bottom: "#0a0a16", dotAuto: true, dot: "#03040d",
                      pattern: "perforado", size: 20.1, dotSize: 39, contrast: 100, grad: 100, grain: 45, soft: 0 };
   const MAX_SIDE = 8192;
 
   // ---------- state ----------
-  let state = Object.assign({ preset: "auto", rotated: false, cw: 1320, ch: 2868, view: "full" }, ORIGINAL);
+  let state = Object.assign({ preset: "auto", rotated: false, cw: 1320, ch: 2868, view: "full",
+                              style: "pattern", shape: "manchas", palette: "costa", layers: 8, seed: 7 }, ORIGINAL);
   try {
-    const saved = JSON.parse(localStorage.getItem("perforado-state") || "null");
+    const saved = JSON.parse((localStorage.getItem("tapiz-state") || localStorage.getItem("perforado-state")) || "null");
     if (saved && typeof saved === "object") state = Object.assign(state, saved);
   } catch (e) { /* storage unavailable */ }
   if (!PATTERNS.some(([id]) => id === state.pattern)) state.pattern = "perforado";
-  const persist = () => { try { localStorage.setItem("perforado-state", JSON.stringify(state)); } catch (e) {} };
+  if (!SHAPES.some(([id]) => id === state.shape)) state.shape = "manchas";
+  if (!PALETTES.some(([id]) => id === state.palette)) state.palette = "costa";
+  const persist = () => { try { localStorage.setItem("tapiz-state", JSON.stringify(state)); } catch (e) {} };
   const pan = { x: 0.5, y: 0.35 }; // detail-view focus, as a fraction of the wallpaper
 
   // ---------- color helpers ----------
@@ -377,6 +423,7 @@ button:disabled { opacity: 0.6; cursor: progress; }
   // is the wallpaper point drawn at the canvas origin. Pattern sizes are in "design pixels" of a
   // 1080-px-wide phone, scaled by the short side, so the look is the same on every screen.
   function render(canvas, st, view) {
+    if (st.style === "material") return renderMaterial(canvas, st, view);
     const { W, H } = view, k = view.k ?? 1, ox = view.ox ?? 0, oy = view.oy ?? 0;
     const ctx = canvas.getContext("2d");
     const pal = palette(st);
@@ -560,6 +607,121 @@ button:disabled { opacity: 0.6; cursor: progress; }
     }
   }
 
+  // ---------- material styles: big layered multicolour shapes ----------
+  function mulberry32(a) {
+    return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  function materialColors(st) {
+    const entry = PALETTES.find(([id]) => id === st.palette) || PALETTES[0];
+    let base;
+    if (entry[2]) base = entry[2].map(hexToRgb);
+    else { const [h, s] = rgbToHsl(hexToRgb(st.base)); base = [0, 1, 2, 3, 4, 5, 6].map((i) => hslToRgb(h, Math.max(0.15, s) * (1 - i * 0.06), 0.08 + i * 0.12)); }
+    const n = Math.max(2, st.layers || base.length), out = [];
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1) * (base.length - 1), j = Math.min(base.length - 2, Math.floor(t));
+      out.push(mix(base[j], base[j + 1], t - j));
+    }
+    return st.theme === "light" ? out.map((c) => mix(c, [255, 255, 255], 0.35)) : out;
+  }
+
+  function renderMaterial(canvas, st, view) {
+    const { W, H } = view, k = view.k ?? 1, ox = view.ox ?? 0, oy = view.oy ?? 0;
+    const ctx = canvas.getContext("2d");
+    const cols = materialColors(st), N = cols.length;
+    const css = (c) => `rgb(${c.map((v) => v.toFixed(1)).join(",")})`;
+    const u = Math.min(W, H) / 1080, S = st.size * u; // S: shape scale in wallpaper px
+    const rng = mulberry32(st.seed * 9973 + 17);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = "none"; ctx.globalAlpha = 1;
+
+    if (st.shape === "manchas") {
+      // Smooth random field, cut into N equal-area bands (topographic look), with anti-aliased edges.
+      const waves = [];
+      for (let i = 0; i < 7; i++) {
+        const a = rng() * Math.PI * 2, lam = S * 26 * (0.6 + rng() * 0.9);
+        waves.push([Math.cos(a) * 2 * Math.PI / lam, Math.sin(a) * 2 * Math.PI / lam, rng() * 6.283, 1 / (1 + i * 0.35)]);
+      }
+      const wl = S * 30, wa = S * 7, p1 = rng() * 6.283, p2 = rng() * 6.283;
+      const field = (X, Y) => {
+        const x = X + wa * Math.sin(Y / wl + p1), y = Y + wa * Math.sin(X / wl + p2);
+        let f = 0; for (const [fx, fy, ph, am] of waves) f += am * Math.sin(x * fx + y * fy + ph);
+        return f;
+      };
+      const samples = [];
+      for (let j = 0; j < 72; j++) for (let i = 0; i < 72; i++) samples.push(field((i + 0.5) / 72 * W, (j + 0.5) / 72 * H));
+      samples.sort((a, b) => a - b);
+      const th = []; for (let i = 1; i < N; i++) th.push(samples[Math.floor(i / N * samples.length)]);
+      const w = canvas.width, h = canvas.height;
+      const img = ctx.createImageData(w, h), d = img.data;
+      const row = (py) => { const r = new Float32Array(w + 1), Y = oy + (py + 0.5) / k; for (let px = 0; px <= w; px++) r[px] = field(ox + (px + 0.5) / k, Y); return r; };
+      let cur = row(0);
+      for (let py = 0; py < h; py++) {
+        const nxt = row(py + 1);
+        for (let px = 0; px < w; px++) {
+          const f = cur[px], g = Math.hypot(cur[px + 1] - f, nxt[px] - f) + 1e-9;
+          let L = 0; while (L < N - 1 && f >= th[L]) L++;
+          let c = cols[L];
+          if (L > 0) { const dl = (f - th[L - 1]) / g; if (dl < 0.5) c = mix(cols[L - 1], c, dl + 0.5); }
+          if (L < N - 1) { const dh = (th[L] - f) / g; if (dh < 0.5) c = mix(cols[L + 1], c, dh + 0.5); }
+          const o = (py * w + px) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+        }
+        cur = nxt;
+      }
+      ctx.putImageData(img, 0, 0);
+    } else {
+      ctx.setTransform(k, 0, 0, k, -ox * k, -oy * k);
+      ctx.fillStyle = css(cols[0]); ctx.fillRect(0, 0, W, H);
+      if (st.shape === "escalones") {
+        // Diagonal bands that climb to the right and drop at regular steps, with rounded corners.
+        const P = S * 15, s = 0.55, dStep = 0.4 * s * P, net = s - dStep / P, e = dStep * 0.08;
+        const bh = (H + net * W) * 1.08 / N, rr = Math.min(dStep * 0.3, bh * 0.25);
+        const phase = -rng() * P;
+        for (let i = 1; i < N; i++) {
+          const Y0 = H / 2 + net * (W / 2) - (H + net * W) * 0.54 + i * bh; // boundary height at x = 0
+          const kMin = Math.floor((-P - phase) / P) - 1, kMax = Math.ceil((W + P - phase) / P) + 1;
+          const yStart = (kk) => Y0 - (kk * P + phase) * s + (kk) * dStep - dStep * (phase / P);
+          ctx.beginPath();
+          ctx.moveTo(kMin * P + phase, yStart(kMin));
+          for (let kk = kMin; kk < kMax; kk++) {
+            const bx = (kk + 1) * P + phase, by = yStart(kk) - s * P;
+            const cx = bx + e, cy = yStart(kk + 1);
+            const nx = (kk + 2) * P + phase, ny = yStart(kk + 1) - s * P;
+            ctx.arcTo(bx, by, cx, cy, rr);
+            ctx.arcTo(cx, cy, nx, ny, rr);
+          }
+          ctx.lineTo(W + 2 * P, H + 2 * P + H); ctx.lineTo(-2 * P, H + 2 * P + H); ctx.closePath();
+          ctx.fillStyle = css(cols[i]); ctx.fill();
+        }
+      } else if (st.shape === "colinas") {
+        // Layered rolling hills, each with its own pair of sine waves.
+        const step = Math.max(2, W / 240);
+        for (let i = 1; i < N; i++) {
+          const base = H * (0.08 + 0.92 * i / N), amp = H / N * 0.75;
+          const l1 = S * (18 + rng() * 20), l2 = S * (7 + rng() * 8), q1 = rng() * 6.283, q2 = rng() * 6.283;
+          ctx.beginPath(); ctx.moveTo(-step, H + 10);
+          for (let x = -step; x <= W + step; x += step) ctx.lineTo(x, base + amp * (Math.sin(x / l1 + q1) * 0.75 + Math.sin(x / l2 + q2) * 0.25));
+          ctx.lineTo(W + step, H + 10); ctx.closePath();
+          ctx.fillStyle = css(cols[i]); ctx.fill();
+        }
+      } else { // arcos: wobbly concentric rings from a corner
+        const cx = -W * 0.08, cy = H * 1.08, R = Math.hypot(W * 1.15, H * 1.15);
+        const lobes = 3 + Math.floor(rng() * 4), wob = S * 2.2;
+        for (let i = 1; i < N; i++) {
+          const rad = R * (1 - i / N), ph = rng() * 6.283;
+          ctx.beginPath();
+          for (let a = 0; a <= 360; a += 2) {
+            const t = a * Math.PI / 180, rr = rad + wob * Math.sin(t * lobes + ph);
+            const x = cx + rr * Math.cos(t), y = cy + rr * Math.sin(t);
+            a ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+          }
+          ctx.closePath(); ctx.fillStyle = css(cols[i]); ctx.fill();
+        }
+      }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+    addGrain(ctx, canvas.width, canvas.height, st.grain, view.grainScale ?? 1);
+  }
+
   // Monochrome film grain (std up to ~6.5 levels) plus a ±0.5 dither that prevents gradient banding.
   function addGrain(ctx, w, h, amount, scale) {
     const std = (amount / 100) * 6.5 * scale;
@@ -628,6 +790,12 @@ button:disabled { opacity: 0.6; cursor: progress; }
   }
 
   function drawThumbs() {
+    if (state.style === "material") {
+      document.querySelectorAll("#shapes canvas").forEach((cv) => {
+        render(cv, Object.assign({}, state, { shape: cv.dataset.shape }), { W: 1080, H: 1080, k: cv.width / 1080, grainScale: 0.4 });
+      });
+      return;
+    }
     const st = Object.assign({}, state, { grad: 0, bottomAuto: true });
     document.querySelectorAll(".pat canvas").forEach((cv) => {
       // A 1080×1080 patch zoomed in so each pattern reads clearly at thumbnail size.
@@ -687,6 +855,25 @@ button:disabled { opacity: 0.6; cursor: progress; }
       sw.append(btn);
     });
 
+    const shp = $("shapes");
+    SHAPES.forEach(([id, name]) => {
+      const lab = document.createElement("label"); lab.className = "pat";
+      const inp = document.createElement("input"); inp.type = "radio"; inp.name = "shape"; inp.value = id; inp.id = "shape-" + id;
+      const cv = document.createElement("canvas"); cv.width = 168; cv.height = 168; cv.dataset.shape = id;
+      const sp = document.createElement("span"); sp.textContent = name;
+      inp.addEventListener("change", () => { state.shape = id; draw(false); });
+      lab.append(inp, cv, sp); shp.append(lab);
+    });
+    const pl = $("palettes");
+    PALETTES.forEach(([id, name]) => {
+      const lab = document.createElement("label"); lab.className = "pal";
+      const inp = document.createElement("input"); inp.type = "radio"; inp.name = "palette"; inp.value = id; inp.id = "pal-" + id;
+      const strip = document.createElement("div"); strip.className = "strip"; strip.dataset.palette = id;
+      const sp = document.createElement("span"); sp.textContent = name;
+      inp.addEventListener("change", () => { state.palette = id; state.layers = paletteLength(id); syncInputs(); draw(); });
+      lab.append(inp, strip, sp); pl.append(lab);
+    });
+
     const pats = $("patterns");
     PATTERNS.forEach(([id, name]) => {
       const lab = document.createElement("label"); lab.className = "pat";
@@ -698,7 +885,16 @@ button:disabled { opacity: 0.6; cursor: progress; }
     });
   }
 
+  const paletteLength = (id) => { const p = PALETTES.find(([x]) => x === id); return p && p[2] ? p[2].length : 7; };
+  function paintStrips() {
+    document.querySelectorAll(".pal .strip").forEach((el) => {
+      const cols = materialColors(Object.assign({}, state, { palette: el.dataset.palette, layers: 0 }));
+      el.replaceChildren(...cols.map((c) => { const i = document.createElement("i"); i.style.background = rgbToHex(c); return i; }));
+    });
+  }
+
   const sliders = {
+    layers: (v) => `${v}`,
     size: (v) => `${(+v).toFixed(1)} px`, dotSize: (v) => `${v}%`, contrast: (v) => `${v}%`, grad: (v) => `${v}%`,
     grain: (v) => `${v}%`, soft: (v) => (+v === 0 ? "nítido" : `${v}%`),
   };
@@ -721,6 +917,13 @@ button:disabled { opacity: 0.6; cursor: progress; }
     $("dot").value = state.dotAuto ? rgbToHex(pal.dot) : state.dot;
     document.querySelectorAll(".swatch").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.hex === state.base)));
     const pi = $("pat-" + state.pattern); if (pi) pi.checked = true;
+    const mat = state.style === "material";
+    $("stylePattern").checked = !mat; $("styleMaterial").checked = mat;
+    document.querySelectorAll("[data-only]").forEach((el) => { el.hidden = el.dataset.only !== state.style; });
+    $("colorGroup").hidden = mat && state.palette !== "mono";
+    const si = $("shape-" + state.shape); if (si) si.checked = true;
+    const pa = $("pal-" + state.palette); if (pa) pa.checked = true;
+    paintStrips();
     Object.keys(sliders).forEach((k) => { $(k).value = state[k]; $(k + "Out").textContent = sliders[k](state[k]); });
   }
 
@@ -739,6 +942,8 @@ button:disabled { opacity: 0.6; cursor: progress; }
       else state.rotated = !state.rotated;
       syncInputs(); draw(false);
     });
+    document.querySelectorAll('input[name="style"]').forEach((r) => r.addEventListener("change", (e) => { state.style = e.target.value; syncInputs(); draw(); }));
+    $("newShape").addEventListener("click", () => { state.seed = (state.seed * 31 + 7) % 100003; draw(); });
     document.querySelectorAll('input[name="view"]').forEach((r) => r.addEventListener("change", (e) => { state.view = e.target.value; draw(false); }));
     document.querySelectorAll('input[name="theme"]').forEach((r) => r.addEventListener("change", (e) => { state.theme = e.target.value; syncInputs(); draw(); }));
     $("base").addEventListener("input", (e) => { state.base = e.target.value; syncInputs(); draw(); });
@@ -756,14 +961,17 @@ button:disabled { opacity: 0.6; cursor: progress; }
       state[k] = +e.target.value; $(k + "Out").textContent = sliders[k](state[k]);
       draw(k !== "grad");
     }));
-    $("reset").addEventListener("click", () => { Object.assign(state, ORIGINAL); syncInputs(); draw(); setStatus("Ajustes del fondo original restaurados."); });
+    $("reset").addEventListener("click", () => { Object.assign(state, ORIGINAL, { style: "pattern" }); syncInputs(); draw(); setStatus("Ajustes del fondo original restaurados."); });
     $("random").addEventListener("click", () => {
       const pick = (a) => a[Math.floor(Math.random() * a.length)];
+      const material = Math.random() < 0.5;
       Object.assign(state, {
+        style: material ? "material" : "pattern", shape: pick(SHAPES)[0], seed: Math.floor(Math.random() * 100000),
         base: pick(SWATCHES)[1], pattern: pick(PATTERNS)[0], theme: Math.random() < 0.7 ? "dark" : "light",
         size: Math.round(14 + Math.random() * 26), dotSize: Math.round(25 + Math.random() * 30),
         contrast: Math.round(60 + Math.random() * 40), bottomAuto: true, dotAuto: true,
       });
+      if (material) { state.palette = pick(PALETTES)[0]; state.layers = paletteLength(state.palette); state.size = Math.round(15 + Math.random() * 15); }
       syncInputs(); draw();
     });
     $("save").addEventListener("click", save);
@@ -790,7 +998,7 @@ button:disabled { opacity: 0.6; cursor: progress; }
       const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
       render(cv, state, { W: w, H: h });
       const blob = await new Promise((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/png"));
-      const filename = `fondo-${state.pattern}-${state.theme === "dark" ? "oscuro" : "claro"}-${w}x${h}.png`;
+      const filename = `tapiz-${state.style === "material" ? state.shape + "-" + state.palette : state.pattern}-${state.theme === "dark" ? "oscuro" : "claro"}-${w}x${h}.png`;
       if (isTouch && navigator.canShare) {
         const file = new File([blob], filename, { type: "image/png" });
         if (navigator.canShare({ files: [file] })) {

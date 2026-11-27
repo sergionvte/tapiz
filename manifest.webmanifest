@@ -1,7 +1,7 @@
 {
-  "name": "Perforado",
-  "short_name": "Perforado",
-  "description": "Fondos de pantalla de patrón a la resolución exacta de tu pantalla.",
+  "name": "Tapiz",
+  "short_name": "Tapiz",
+  "description": "Fondos de pantalla con patrones y formas a la resolución exacta de tu pantalla.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0b0c15",
