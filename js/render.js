@@ -265,8 +265,16 @@ function renderMaterial(canvas, st, view) {
   };
   // Visit grid cells that intersect the visible part of the wallpaper.
   const vx0 = Math.max(0, ox), vy0 = Math.max(0, oy), vx1 = Math.min(W, ox + canvas.width / k), vy1 = Math.min(H, oy + canvas.height / k);
+  // Whole number of tiles across and down, so the grid fits the screen exactly in either
+  // orientation; each tile is stretched by a few percent at most to absorb the remainder.
+  const nx = Math.max(1, Math.round(W / g)), ny = Math.max(1, Math.round(H / g)), gx = W / nx, gy = H / ny;
   const eachCell = (fn) => {
-    for (let j = Math.floor(vy0 / g); j * g < vy1; j++) for (let i = Math.floor(vx0 / g); i * g < vx1; i++) fn(i * g, j * g, cellRng(i, j), i, j);
+    for (let j = Math.max(0, Math.floor(vy0 / gy)); j < ny && j * gy < vy1; j++)
+      for (let i = Math.max(0, Math.floor(vx0 / gx)); i < nx && i * gx < vx1; i++) {
+        ctx.save(); ctx.translate(i * gx, j * gy); ctx.scale(gx / g, gy / g);
+        fn(0, 0, cellRng(i, j), i, j);
+        ctx.restore();
+      }
   };
   const clipCell = (x, y) => { ctx.save(); ctx.beginPath(); ctx.rect(x, y, g + ov, g + ov); ctx.clip(); };
 
