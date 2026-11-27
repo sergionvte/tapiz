@@ -75,21 +75,20 @@ function renderArt(canvas, st, view) {
       const lin = (c) => c.map(srgbToLin);
       const skyTop = lin(dark ? mix(cols[0], [0, 0, 0], 0.8) : mix(cols[0], [255, 255, 255], 0.15));
       const skyBot = lin(dark ? mix(cols[0], [0, 0, 0], 0.4) : cols[0]);
-      const nC = Math.max(1, Math.min(3, N - 2)), curt = [];
+      const nC = Math.max(1, Math.min(2, N - 2)), curt = [];
       for (let i = 0; i < nC; i++) {
         const hem = cols[Math.max(1, N - 2 - i)], top = cols[Math.max(1, N - 4 - i)];
-        curt.push({ hem: lin(hem), top: lin(top), base: H * (0.42 + 0.12 * i + rng() * 0.05), amp: H * (0.11 + rng() * 0.05),
-          w: S * (2 + rng() * 1.4), gain: 0.95 - i * 0.22, shape: makeFbm(rng, 3), fade: makeFbm(rng, 2), rays: makeSimplex(rng), ph: rng() * 50 });
+        curt.push({ hem: lin(hem), top: lin(top), base: H * (0.4 + 0.16 * i + rng() * 0.05), amp: H * (0.08 + rng() * 0.04),
+          w: S * (2.2 + rng() * 1.2), gain: 1.5 - i * 0.5, shape: makeFbm(rng, 3), fade: makeFbm(rng, 2), rays: makeSimplex(rng), ph: rng() * 50 });
       }
-      const lam = 1 / (S * 48), starCell = S * 1.2, seed = st.seed;
+      const lam = 1 / (S * 32), starCell = S * 1.2, seed = st.seed;
       pixels(ctx, canvas, view, (X, Y, out) => {
         const t = Y / H;
         let r = 0, g = 0, b = 0;
         for (const c of curt) {
           const dy = Y - (c.base + c.amp * c.shape(X * lam + c.ph, c.ph));
-          const reach = c.w * (3.5 + 2.5 * c.fade(X / (S * 30), c.ph + 4));
-          let I = dy > 0 ? Math.exp(-(dy * dy) / (c.w * c.w * 0.3)) : Math.exp(dy / reach);
-          I *= c.gain * clamp01(0.25 + 1.3 * c.fade(X / (S * 85), c.ph)) * (0.88 + 0.12 * c.rays(X / (S * 2.2), Y / (S * 45)));
+          let I = dy > 0 ? Math.exp(-(dy * dy) / (c.w * c.w * 0.36)) : Math.exp(dy / (c.w * 6));
+          I *= c.gain * (0.6 + 0.4 * clamp01(0.5 + c.fade(X / (S * 70), c.ph))) * (0.9 + 0.1 * c.rays(X / (S * 1.6), Y / (S * 60)));
           const m = clamp01(-dy / (c.w * 6));
           r += (c.hem[0] + (c.top[0] - c.hem[0]) * m) * I; g += (c.hem[1] + (c.top[1] - c.hem[1]) * m) * I; b += (c.hem[2] + (c.top[2] - c.hem[2]) * m) * I;
         }
@@ -127,16 +126,16 @@ function renderArt(canvas, st, view) {
     case "seda": {
       // Silk: a smooth folded surface. Colour follows the height of the folds and a raking
       // light adds sheen on the crests and shade in the troughs.
-      const fa = makeFbm(rng, 3), fb = makeFbm(rng, 3), lut = makeLut(cols), sc = 1 / (S * 75);
+      const fa = makeFbm(rng, 2), fb = makeFbm(rng, 2), lut = makeLut(cols), sc = 1 / (S * 150);
       const la = rng() * Math.PI * 2, lx = Math.cos(la), ly = Math.sin(la), e = 0.01;
-      const height = (x, y) => { const qx = fa(x, y), qy = fb(x + 3.1, y - 1.7); return fa(x + 1.3 * qx + 7.2, y + 1.3 * qy + 1.3) + 0.4 * qx; };
+      const height = (x, y) => { const qx = fa(x, y), qy = fb(x + 3.1, y - 1.7); return fa(x + 0.9 * qx + 7.2, y + 0.9 * qy + 1.3) + 0.35 * qx; };
       pixels(ctx, canvas, view, (X, Y, out) => {
         const x = X * sc, y = Y * sc, h = height(x, y);
         const gx = (height(x + e, y) - h) / e, gy = (height(x, y + e) - h) / e;
-        const light = Math.max(-1, Math.min(1, (gx * lx + gy * ly) * 0.22));
-        lut(clamp01(0.5 + 1.15 * h), out);
-        if (light > 0) { const m = light * 0.45; out[0] += (255 - out[0]) * m; out[1] += (255 - out[1]) * m; out[2] += (255 - out[2]) * m; }
-        else { const m = 1 + light * 0.4; out[0] *= m; out[1] *= m; out[2] *= m; }
+        const light = Math.max(-1, Math.min(1, (gx * lx + gy * ly) * 0.3));
+        lut(clamp01(0.5 + 1.4 * h), out);
+        if (light > 0) { const m = light * 0.32; out[0] += (255 - out[0]) * m; out[1] += (255 - out[1]) * m; out[2] += (255 - out[2]) * m; }
+        else { const m = 1 + light * 0.22; out[0] *= m; out[1] *= m; out[2] *= m; }
       });
       break;
     }
