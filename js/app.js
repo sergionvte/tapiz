@@ -74,7 +74,7 @@
       if (cell < 24) break;
       let m = Math.max(1, Math.round(lo / cell)), cut = Math.abs(lo / m - cell) / cell > 0.02;
       if (cut) m = Math.ceil(lo / cell - 1e-6);
-      const label = (w <= h ? `${n} × ${m}` : `${m} × ${n}`) + " baldosas" + (cut ? " · bordes cortados" : "");
+      const label = t("tiles", w <= h ? `${n} × ${m}` : `${m} × ${n}`, cut);
       opts.push({ n, m, cut, label });
     }
     return opts.reverse(); // left = many small tiles
@@ -110,7 +110,7 @@
     w = Math.max(200, Math.min(MAX_SIDE, Math.round(w) || 1080));
     h = Math.max(200, Math.min(MAX_SIDE, Math.round(h) || 1920));
     if (state.rotated && p.id !== "custom") [w, h] = [h, w];
-    return { w, h, name: p.id === "auto" ? "Esta pantalla" : p.id === "custom" ? "Personalizado" : p.name };
+    return { w, h, name: p.id === "auto" ? t("thisScreen") : p.id === "custom" ? t("custom") : tn(p.id, p.name) };
   }
 
   // ---------- preview ----------
@@ -159,9 +159,9 @@
 
   function updateClock() {
     const now = new Date();
-    const t = now.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-    $("lockTime").textContent = t; $("deskTime").textContent = t;
-    $("lockDate").textContent = now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+    const hm = now.toLocaleTimeString(t("locale"), { hour: "2-digit", minute: "2-digit" });
+    $("lockTime").textContent = hm; $("deskTime").textContent = hm;
+    $("lockDate").textContent = now.toLocaleDateString(t("locale"), { weekday: "long", day: "numeric", month: "long" });
   }
 
   let pending = 0, thumbsDue = false;
@@ -233,31 +233,32 @@
     const lab = document.createElement("label"); lab.className = cls;
     const inp = document.createElement("input"); inp.type = "radio"; inp.name = name; inp.value = id; inp.id = `${name}-${id}`;
     const cv = document.createElement("canvas"); cv.width = w; cv.height = h; cv.dataset.id = id;
-    const sp = document.createElement("span"); sp.textContent = label;
+    const sp = document.createElement("span"); sp.textContent = tn(id, label);
     inp.addEventListener("change", onChange);
     lab.append(inp, cv, sp); container.append(lab);
   }
 
   function buildUI() {
     const det = $("detected");
-    det.append("Detectada: ");
+    det.append(t("detected"));
     const b = document.createElement("b"); b.textContent = `${detected.w} × ${detected.h} px`; det.append(b);
     det.append(` (${detected.cw}×${detected.ch} pt @${+detected.dpr.toFixed(2)}x)`);
     if (navigator.brave) {
       const n = document.createElement("span"); n.className = "hint warn";
-      n.textContent = " Brave oculta el tamaño real de la pantalla: si no coincide, elige tu modelo abajo o usa «Personalizado».";
+      n.textContent = t("brave");
       det.append(document.createElement("br"), n);
     }
 
     const sel = $("preset");
-    const groups = { phone: "Teléfonos", tablet: "Tabletas", mac: "Mac", monitor: "Monitores" };
+    const groups = t("groups");
     const kind = (p) => p.id === "auto" || p.id === "custom" ? null : /^ipad/.test(p.id) ? "tablet"
       : /^(mb|imac)/.test(p.id) ? "mac" : /^(fhd|qhd|uw|4k|5k)$/.test(p.id) ? "monitor" : "phone";
     const og = {};
     PRESETS.forEach((p) => {
       const o = document.createElement("option");
       o.value = p.id;
-      o.textContent = p.id === "auto" ? `Esta pantalla — ${detected.w} × ${detected.h}` : p.w ? `${p.name} — ${p.w} × ${p.h}` : p.name;
+      const pn = p.id === "custom" ? (EN ? "Custom…" : p.name) : tn(p.id, p.name);
+      o.textContent = p.id === "auto" ? `${pn} — ${detected.w} × ${detected.h}` : p.w ? `${pn} — ${p.w} × ${p.h}` : pn;
       const kd = kind(p);
       if (kd) {
         if (!og[kd]) { og[kd] = document.createElement("optgroup"); og[kd].label = groups[kd]; sel.append(og[kd]); }
@@ -277,7 +278,7 @@
     SWATCHES.forEach(([name, hex]) => {
       const btn = document.createElement("button");
       btn.type = "button"; btn.className = "swatch"; btn.style.background = hex;
-      btn.title = name; btn.setAttribute("aria-label", name); btn.dataset.hex = hex;
+      btn.title = tsw(name); btn.setAttribute("aria-label", tsw(name)); btn.dataset.hex = hex;
       btn.addEventListener("click", () => { state.base = hex; syncInputs(); draw(); });
       sw.append(btn);
     });
@@ -287,7 +288,7 @@
       const lab = document.createElement("label"); lab.className = "pal";
       const inp = document.createElement("input"); inp.type = "radio"; inp.name = "palette"; inp.value = id; inp.id = "pal-" + id;
       const strip = document.createElement("div"); strip.className = "strip"; strip.dataset.palette = id;
-      const sp = document.createElement("span"); sp.textContent = name;
+      const sp = document.createElement("span"); sp.textContent = tn(id, name);
       inp.addEventListener("change", () => {
         if (state.palette !== "custom") state.lastPalette = state.palette;
         state.palette = id; state.layers = Math.min(10, paletteLength(id)); syncInputs(); draw();
@@ -301,7 +302,7 @@
     const box = $("customCols");
     box.replaceChildren(...state.custom.map((hex, i) => {
       const inp = document.createElement("input");
-      inp.type = "color"; inp.value = hex; inp.id = "custom" + i; inp.setAttribute("aria-label", `Color ${i + 1} de tu paleta`);
+      inp.type = "color"; inp.value = hex; inp.id = "custom" + i; inp.setAttribute("aria-label", t("paletteColor", i + 1));
       inp.addEventListener("input", (e) => { state.custom[i] = e.target.value; paintStrips(); draw(); });
       return inp;
     }));
@@ -318,7 +319,7 @@
 
   const sliders = {
     size: (v) => `${(+v).toFixed(1)} px`, dotSize: (v) => `${v}%`, contrast: (v) => `${v}%`, grad: (v) => `${v}%`,
-    layers: (v) => `${v}`, grain: (v) => `${v}%`, soft: (v) => (+v === 0 ? "nítido" : `${v}%`), relief: (v) => (+v === 0 ? "plano" : `${v}%`),
+    layers: (v) => `${v}`, grain: (v) => `${v}%`, soft: (v) => (+v === 0 ? t("sharp") : `${v}%`), relief: (v) => (+v === 0 ? t("flat") : `${v}%`),
   };
 
   function syncInputs() {
@@ -355,9 +356,9 @@
     check("abstract-" + state.abstract); check("gradient-" + state.gradient); check("pal-" + state.palette);
     Object.keys(sliders).forEach((k) => { if (k !== "size") { $(k).value = state[k]; $(k + "Out").textContent = sliders[k](state[k]); } });
     syncScale();
-    $("seedOut").textContent = `Variación n.º ${state.seed}`;
-    $("newShape3").textContent = state.style === "pattern" ? "Otro" : "Variar";
-    $("newShape3").title = state.style === "pattern" ? "Combinación aleatoria de patrón" : "Genera otra versión del mismo diseño";
+    $("seedOut").textContent = t("variation", state.seed);
+    $("newShape3").textContent = state.style === "pattern" ? t("other") : t("vary");
+    $("newShape3").title = state.style === "pattern" ? t("otherTitle") : t("varyTitle");
     paintStrips();
     renderFavs();
   }
@@ -369,7 +370,7 @@
     $("menubarPx").hidden = !state.menubar;
     $("menubarPx").placeholder = String(autoMenuPx());
     if (document.activeElement !== $("menubarPx")) $("menubarPx").value = state.menuPx > 0 ? state.menuPx : "";
-    $("menubarHint").textContent = state.menubar ? (state.menuPx > 0 ? "px (a mano)" : "px (automático)") : "";
+    $("menubarHint").textContent = state.menubar ? (state.menuPx > 0 ? t("menuManual") : t("menuAuto")) : "";
     if (isGrid()) {
       const opts = tileOptions(), idx = snapTiles(opts);
       el.min = 0; el.max = opts.length - 1; el.step = 1; el.value = idx;
@@ -449,7 +450,7 @@
     });
     $("reset").addEventListener("click", () => {
       Object.assign(state, ORIGINAL, { style: "pattern", tab: "design" }); syncInputs(); draw();
-      setStatus("Diseño original restaurado.");
+      setStatus(t("restored"));
     });
     $("random").addEventListener("click", randomize);
     $("save").addEventListener("click", save);
@@ -491,8 +492,8 @@
     render(cv, state, { W: 1080, H: 1440, k: 120 / 1080, grainScale: 0.4 });
     const favs = loadFavs();
     favs.unshift({ s: designState(), t: cv.toDataURL("image/jpeg", 0.82) });
-    if (storeFavs(favs.slice(0, 30))) { renderFavs(); setStatus("Diseño guardado en Favoritos."); }
-    else setStatus("No se pudo guardar: el almacenamiento del navegador no está disponible.");
+    if (storeFavs(favs.slice(0, 30))) { renderFavs(); setStatus(t("favSaved")); }
+    else setStatus(t("favFail"));
   }
 
   function renderFavs() {
@@ -500,11 +501,11 @@
     $("favEmpty").hidden = state.tab !== "fav" || favs.length > 0;
     box.replaceChildren(...favs.map((f, i) => {
       const wrap = document.createElement("div"); wrap.className = "fav";
-      const open = document.createElement("button"); open.type = "button"; open.className = "open"; open.setAttribute("aria-label", `Abrir favorito ${i + 1}`);
+      const open = document.createElement("button"); open.type = "button"; open.className = "open"; open.setAttribute("aria-label", t("favOpen", i + 1));
       const img = document.createElement("img"); img.src = typeof f.t === "string" && f.t.startsWith("data:image/") ? f.t : ""; img.alt = "";
       open.append(img);
-      open.addEventListener("click", () => { Object.assign(state, f.s); sanitize(); syncInputs(); draw(); setStatus("Favorito aplicado."); });
-      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", `Borrar favorito ${i + 1}`);
+      open.addEventListener("click", () => { Object.assign(state, f.s); sanitize(); syncInputs(); draw(); setStatus(t("favApplied")); });
+      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", t("favDel", i + 1));
       del.addEventListener("click", () => { const all = loadFavs(); all.splice(i, 1); storeFavs(all); renderFavs(); });
       wrap.append(open, del); return wrap;
     }));
@@ -522,8 +523,8 @@
   async function share() {
     const url = location.origin + location.pathname + "#d=" + encode(designState());
     history.replaceState(null, "", url);
-    try { await navigator.clipboard.writeText(url); setStatus("Enlace copiado: cualquiera que lo abra verá este diseño."); }
-    catch (e) { setStatus("Copia el enlace desde la barra de direcciones."); }
+    try { await navigator.clipboard.writeText(url); setStatus(t("linkCopied")); }
+    catch (e) { setStatus(t("linkManual")); }
   }
 
   // ---------- export ----------
@@ -533,23 +534,23 @@
   async function save() {
     const btn = $("save");
     const { w, h } = dims();
-    btn.disabled = true; $("busy").hidden = false; setStatus(`Generando ${w} × ${h} px…`);
+    btn.disabled = true; $("busy").hidden = false; setStatus(t("generating", w, h));
     await new Promise((r) => setTimeout(r, 40));
     try {
       const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
       render(cv, renderState(), { W: w, H: h });
       const blob = await new Promise((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/png"));
       const tag = state.style === "pattern" ? state.pattern : `${currentDesign()}-${state.palette}`;
-      const filename = `tapiz-${tag}-${state.theme === "dark" ? "oscuro" : "claro"}-${w}x${h}.png`;
+      const filename = `tapiz-${tag}-${state.theme === "dark" ? t("dark") : t("light")}-${w}x${h}.png`;
       if (isTouch && navigator.canShare) {
         const file = new File([blob], filename, { type: "image/png" });
         if (navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({ files: [file] });
-            setStatus("Listo. Elige «Guardar imagen» para llevarla a Fotos.");
+            setStatus(t("shared"));
             return;
           } catch (err) {
-            if (err && err.name === "AbortError") { setStatus("Cancelado."); return; }
+            if (err && err.name === "AbortError") { setStatus(t("cancelled")); return; }
           }
         }
         openSheet(blob);
@@ -559,9 +560,9 @@
       const a = document.createElement("a");
       a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-      setStatus(`Descargado: ${filename}`);
+      setStatus(t("downloaded", filename));
     } catch (e) {
-      setStatus("No se pudo generar la imagen. Prueba con una resolución menor.");
+      setStatus(t("failed"));
     } finally { btn.disabled = false; $("busy").hidden = true; }
   }
 
@@ -570,15 +571,16 @@
     sheetUrl = URL.createObjectURL(blob);
     $("sheetImg").src = sheetUrl;
     $("sheet").hidden = false;
-    setStatus("Imagen lista: guárdala desde la vista ampliada.");
+    setStatus(t("sheetReady"));
     $("sheetClose").focus();
   }
   function closeSheet() { $("sheet").hidden = true; }
 
+  translatePage();
   buildUI();
   syncInputs();
   wire();
   updateClock();
   draw();
-  if (fromHash) setStatus("Diseño cargado desde el enlace.");
+  if (fromHash) setStatus(t("fromLink"));
 })();
