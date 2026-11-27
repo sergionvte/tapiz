@@ -341,7 +341,12 @@ function renderMaterial(canvas, st, view) {
   const shortSide = Math.min(W, Hu), longSide = Math.max(W, Hu);
   const nS = Math.max(1, Math.round(st.tiles || shortSide / (S * 9)));
   const g = shortSide / nS, nL = Math.max(1, Math.round(longSide / g));
-  const nx = W <= Hu ? nS : nL, ny = W <= Hu ? nL : nS, gx = W / nx, gy = Hu / ny;
+  // st.tilesCut: square tiles that don't divide the long side; they are centred and the long
+  // side gets equal cut-off cells at both ends instead of stretching.
+  const cut = !!st.tilesCut, nLc = cut ? Math.ceil(longSide / g - 1e-6) : nL; // edge cells show over half a tile
+  const nx = W <= Hu ? nS : nLc, ny = W <= Hu ? nLc : nS;
+  const gx = cut && W > Hu ? g : W / nx, gy = cut && W <= Hu ? g : Hu / ny;
+  const offX = (W - nx * gx) / 2, offY = (Hu - ny * gy) / 2; // zero unless cut
   const rng = mulberry32(st.seed * 9973 + 17);
   const inks = N > 2 ? cols.slice(1) : cols;
   const cellRng = (i, j) => mulberry32(st.seed * 131 + i * 7919 + j * 104729);
@@ -356,11 +361,11 @@ function renderMaterial(canvas, st, view) {
     const cw = canvas.width, ch = canvas.height;
     const top = Math.round(-oy * k); // wallpaper top edge in canvas pixels
     for (let j = band > 0 ? -1 : 0; j < ny; j++) {
-      const y0 = Math.round((band + j * gy - oy) * k), y1 = Math.round((band + (j + 1) * gy - oy) * k);
+      const y0 = Math.round((band + offY + j * gy - oy) * k), y1 = Math.round((band + offY + (j + 1) * gy - oy) * k);
       const yc = Math.max(y0, top); // the band row is clipped at the top edge, drawn full size
       if (y1 <= 0 || yc >= ch || y1 <= yc) continue;
       for (let i = 0; i < nx; i++) {
-        const x0 = Math.round((i * gx - ox) * k), x1 = Math.round(((i + 1) * gx - ox) * k);
+        const x0 = Math.round((offX + i * gx - ox) * k), x1 = Math.round((offX + (i + 1) * gx - ox) * k);
         if (x1 <= 0 || x0 >= cw || x1 <= x0) continue;
         ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.beginPath(); ctx.rect(x0, yc, x1 - x0, y1 - yc); ctx.clip();

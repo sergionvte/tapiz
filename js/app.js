@@ -4,7 +4,7 @@
 
   // Everything that defines a design (shared by favourites and links).
   const DESIGN_KEYS = ["tiles", "style", "theme", "base", "bottomAuto", "bottom", "dotAuto", "dot", "pattern", "shape", "abstract",
-    "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft", "relief", "menubar", "menuPx"];
+    "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft", "relief", "menubar", "menuPx", "tilesCut"];
 
   // ---------- state ----------
   let state = Object.assign({
@@ -64,22 +64,26 @@
   }
   const bandPx = () => state.menubar && isGrid() ? menuBarPx() : 0;
   const renderState = () => Object.assign({}, state, { band: bandPx() });
+  // Tile counts across the short side, from huge tiles to tiny ones. Counts whose square cells
+  // divide the long side (within 2 %) fit exactly; the rest keep square cells, centred, with equal
+  // cut-off cells at both ends of the long side.
   function tileOptions() {
-    const d = dims(), w = d.w, h = d.h - bandPx(), sh = Math.min(w, h), lo = Math.max(w, h);
-    for (const tol of [0.012, 0.02, 0.03, 0.05]) {
-      const opts = [];
-      for (let n = 2; n <= 24; n++) {
-        const cell = sh / n, m = Math.max(1, Math.round(lo / cell));
-        if (Math.abs(lo / m - cell) / cell <= tol) opts.push({ n, m, label: w <= h ? `${n} × ${m}` : `${m} × ${n}` });
-      }
-      if (opts.length >= 6 || tol === 0.05) return opts.reverse(); // left = many small tiles
+    const d = dims(), w = d.w, h = d.h - bandPx(), sh = Math.min(w, h), lo = Math.max(w, h), opts = [];
+    for (let n = 1; n <= 40; n++) {
+      const cell = sh / n;
+      if (cell < 24) break;
+      let m = Math.max(1, Math.round(lo / cell)), cut = Math.abs(lo / m - cell) / cell > 0.02;
+      if (cut) m = Math.ceil(lo / cell - 1e-6);
+      const label = (w <= h ? `${n} × ${m}` : `${m} × ${n}`) + " baldosas" + (cut ? " · bordes cortados" : "");
+      opts.push({ n, m, cut, label });
     }
+    return opts.reverse(); // left = many small tiles
   }
   function snapTiles(opts) {
     const want = state.tiles || Math.round(1080 / (state.size * 9));
     let best = opts[0];
     for (const o of opts) if (Math.abs(o.n - want) < Math.abs(best.n - want)) best = o;
-    state.tiles = best.n;
+    state.tiles = best.n; state.tilesCut = best.cut;
     return opts.indexOf(best);
   }
 
@@ -369,7 +373,7 @@
     if (isGrid()) {
       const opts = tileOptions(), idx = snapTiles(opts);
       el.min = 0; el.max = opts.length - 1; el.step = 1; el.value = idx;
-      $("sizeOut").textContent = `${opts[idx].label} baldosas`;
+      $("sizeOut").textContent = opts[idx].label;
     } else {
       el.min = 8; el.max = 80; el.step = 0.1; el.value = state.size;
       $("sizeOut").textContent = "";
@@ -414,7 +418,7 @@
     });
     $("dot").addEventListener("input", (e) => { state.dot = e.target.value; draw(); });
     $("size").addEventListener("input", (e) => {
-      if (isGrid()) { const o = tileOptions()[+e.target.value]; if (o) { state.tiles = o.n; $("sizeOut").textContent = `${o.label} baldosas`; } }
+      if (isGrid()) { const o = tileOptions()[+e.target.value]; if (o) { state.tiles = o.n; state.tilesCut = o.cut; $("sizeOut").textContent = o.label; } }
       else state.size = +e.target.value;
       draw();
     });
@@ -468,7 +472,7 @@
     Object.assign(state, {
       style, theme: Math.random() < 0.75 ? "dark" : "light", seed: Math.floor(Math.random() * 100000),
       base: pick(SWATCHES)[1], pattern: pick(PATTERNS)[0], shape: pick(SHAPES)[0], abstract: pick(ABSTRACTS)[0], gradient: pick(GRADIENTS)[0],
-      palette: pal, layers: Math.min(10, paletteLength(pal)), bottomAuto: true, dotAuto: true, tiles: 0,
+      palette: pal, layers: Math.min(10, paletteLength(pal)), bottomAuto: true, dotAuto: true, tiles: 0, tilesCut: false,
       size: style === "pattern" ? Math.round(14 + Math.random() * 26) : Math.round(15 + Math.random() * 15),
       dotSize: Math.round(25 + Math.random() * 30), contrast: Math.round(60 + Math.random() * 40),
       relief: Math.random() < 0.35 ? Math.round(40 + Math.random() * 50) : 0,
