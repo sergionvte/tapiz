@@ -4,7 +4,7 @@
 
   // Everything that defines a design (shared by favourites and links).
   const DESIGN_KEYS = ["tiles", "style", "theme", "base", "bottomAuto", "bottom", "dotAuto", "dot", "pattern", "shape", "abstract",
-    "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft", "relief", "menubar"];
+    "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft", "relief", "menubar", "menuPx"];
 
   // ---------- state ----------
   let state = Object.assign({
@@ -34,6 +34,7 @@
     state.layers = Math.max(3, Math.min(10, +state.layers || 6));
     state.relief = Math.max(0, Math.min(100, +state.relief || 0));
     state.menubar = !!state.menubar;
+    state.menuPx = Math.max(0, Math.min(400, Math.round(+state.menuPx || 0)));
   }
 
   // Grid-based Material designs choose a tile count instead of a free scale.
@@ -41,17 +42,25 @@
   const isGrid = () => state.style === "material" && GRID_SHAPES.includes(state.shape);
   // Tile counts (across the short side) whose cells stay square to within tol on this screen.
   // Menu bar height in wallpaper pixels for the current screen (landscape only).
-  function menuBarPx() {
+  // Menu bar height in wallpaper pixels for the current screen (landscape only). Notched
+  // MacBooks use 37.5 pt (75 px at 2x), other Macs 24 pt. state.menuPx overrides it.
+  function autoMenuPx() {
     const d = dims();
-    if (d.w <= d.h) return 0;
     const p = PRESETS.find((x) => x.id === state.preset) || PRESETS[0];
     if (p.menu) return p.menu;
     if (p.id === "auto") {
-      const t = screen.availTop || 0; // macOS reports the menu bar here (in points)
-      if (t > 0 && t < 60) return Math.round(t * detected.dpr);
-      return Math.round(24 * detected.dpr);
+      const t = screen.availTop || 0; // Chrome/Safari report the menu bar here (points); Brave hides it
+      if (t > 0 && t < 60) return Math.round((Math.abs(t - 37.5) <= 1 ? 37.5 : t) * detected.dpr); // availTop rounds 37.5 pt
+      const r = detected.cw / detected.ch; // notched MacBooks are ~1.54:1, other Macs 16:10 or wider
+      return Math.round((r > 1.52 && r < 1.56 ? 37.5 : 24) * detected.dpr);
     }
-    return d.h >= 1600 ? 48 : 24;
+    const r = d.w / d.h, s = d.h >= 1600 ? 2 : 1;
+    return Math.round((r > 1.52 && r < 1.56 ? 37.5 : 24) * s);
+  }
+  function menuBarPx() {
+    const d = dims();
+    if (d.w <= d.h) return 0;
+    return state.menuPx > 0 ? Math.min(Math.round(d.h / 4), state.menuPx) : autoMenuPx();
   }
   const bandPx = () => state.menubar && isGrid() ? menuBarPx() : 0;
   const renderState = () => Object.assign({}, state, { band: bandPx() });
@@ -230,6 +239,11 @@
     det.append("Detectada: ");
     const b = document.createElement("b"); b.textContent = `${detected.w} × ${detected.h} px`; det.append(b);
     det.append(` (${detected.cw}×${detected.ch} pt @${+detected.dpr.toFixed(2)}x)`);
+    if (navigator.brave) {
+      const n = document.createElement("span"); n.className = "hint warn";
+      n.textContent = " Brave oculta el tamaño real de la pantalla: si no coincide, elige tu modelo abajo o usa «Personalizado».";
+      det.append(document.createElement("br"), n);
+    }
 
     const sel = $("preset");
     const groups = { phone: "Teléfonos", tablet: "Tabletas", mac: "Mac", monitor: "Monitores" };
@@ -348,7 +362,10 @@
     const el = $("size"), d = dims();
     $("menubarRow").hidden = state.tab !== "adjust" || !isGrid() || d.w <= d.h;
     $("menubar").checked = state.menubar;
-    $("menubarHint").textContent = state.menubar ? `Franja superior de ${menuBarPx()} px` : "";
+    $("menubarPx").hidden = !state.menubar;
+    $("menubarPx").placeholder = String(autoMenuPx());
+    if (document.activeElement !== $("menubarPx")) $("menubarPx").value = state.menuPx > 0 ? state.menuPx : "";
+    $("menubarHint").textContent = state.menubar ? (state.menuPx > 0 ? "px (a mano)" : "px (automático)") : "";
     if (isGrid()) {
       const opts = tileOptions(), idx = snapTiles(opts);
       el.min = 0; el.max = opts.length - 1; el.step = 1; el.value = idx;
@@ -379,6 +396,10 @@
     });
     document.querySelectorAll('input[name="view"]').forEach((r) => r.addEventListener("change", (e) => { state.view = e.target.value; draw(false); }));
     $("menubar").addEventListener("change", (e) => { state.menubar = e.target.checked; syncScale(); draw(false); });
+    $("menubarPx").addEventListener("input", (e) => {
+      const v = parseInt(e.target.value, 10);
+      state.menuPx = v > 0 && v <= 400 ? v : 0; syncScale(); draw(false);
+    });
     $("mock").addEventListener("change", (e) => { state.mock = e.target.checked; updateClock(); draw(false); });
     document.querySelectorAll('input[name="theme"]').forEach((r) => r.addEventListener("change", (e) => { state.theme = e.target.value; syncInputs(); draw(); }));
     $("base").addEventListener("input", (e) => { state.base = e.target.value; syncInputs(); draw(); });

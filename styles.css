@@ -192,3 +192,5 @@ button:disabled { opacity: 0.6; cursor: progress; }
 .sheet-card img { max-height: 70vh; border-radius: 14px; }
 .sheet-card p { margin: 0; max-width: 34ch; }
 .sheet-card button { background: transparent; color: #e8e9f3; border: 1px solid #3a3d55; }
+input.mini { width: 5.5em; }
+.hint.warn { color: var(--fg); }
