@@ -141,6 +141,7 @@ input[type="color"]:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .patterns { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 10px 8px; }
 #grid-abstract, #grid-gradient { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#grid-material { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .pat { position: relative; display: grid; gap: 5px; justify-items: center; cursor: pointer; font-size: 0.75rem; color: var(--muted); text-align: center; }
 .pat input { position: absolute; opacity: 0; pointer-events: none; }
 .pat canvas { width: 100%; aspect-ratio: 1; border-radius: 12px; display: block; box-shadow: inset 0 0 0 1px var(--ring); outline: 2px solid transparent; outline-offset: 2px; }
