@@ -95,17 +95,18 @@ function renderArt(canvas, st, view) {
       const skyTop = toLin(dark ? mix(cols[0], [0, 0, 0], 0.75) : mix(cols[0], [255, 255, 255], 0.3));
       const nC = Math.min(3, N - 2), curt = [];
       for (let i = 0; i < nC; i++) {
-        curt.push({ col: toLin(cols[Math.max(1, N - 2 - i)]), base: H * (0.4 + 0.12 * i + rng() * 0.06), w: S * (3.5 + rng() * 3),
+        curt.push({ col: toLin(cols[Math.max(1, N - 2 - i)]), base: H * (0.4 + 0.12 * i + rng() * 0.06), w: S * (2.6 + rng() * 2.2),
           f: makeField(rng, S * 60, 2), g: makeField(rng, S * 14, 2), amp: H * (0.1 + rng() * 0.06),
-          gain: (dark ? 0.6 : 0.35) - i * 0.1, fade: makeField(rng, S * 80, 1) });
+          gain: (dark ? 0.42 : 0.28) - i * 0.08, fade: makeField(rng, S * 80, 1) });
       }
       pixels(ctx, canvas, view, (X, Y, out) => {
         const t = Y / H;
         let r = skyTop[0] + (sky[0] - skyTop[0]) * t, g = skyTop[1] + (sky[1] - skyTop[1]) * t, b = skyTop[2] + (sky[2] - skyTop[2]) * t;
         for (const c of curt) {
           const dy = Y - (c.base + c.f(X, 0) * c.amp);
-          let I = dy < 0 ? Math.exp(-(dy * dy) / (c.w * c.w * 10)) : Math.exp(-(dy * dy) / (c.w * c.w * 0.5));
-          I *= c.gain * (0.8 + 0.2 * Math.sin(X / (S * 2.2) + c.g(X, 0) * 4)) * clamp01(0.55 + 0.6 * c.fade(X, 0));
+          // Sharp lower hem, light fading upwards in rays, and gaps along the band.
+          let I = dy > 0 ? Math.exp(-Math.pow(dy / (c.w * 0.45), 2)) : Math.exp(dy / (c.w * 2.6));
+          I *= c.gain * (0.72 + 0.28 * Math.sin(X / (S * 1.9) + c.g(X, 0) * 4)) * clamp01(0.2 + 1.1 * c.fade(X, 0));
           r += c.col[0] * I; g += c.col[1] * I; b += c.col[2] * I;
         }
         out[0] = fromLin(r); out[1] = fromLin(g); out[2] = fromLin(b);
