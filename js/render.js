@@ -253,7 +253,7 @@ function renderMaterial(canvas, st, view) {
   const ctx = canvas.getContext("2d");
   const cols = materialColors(st), N = cols.length;
   const css = (c) => `rgb(${c.map((v) => v.toFixed(1)).join(",")})`;
-  const u = Math.min(W, H) / 1080, S = st.size * u, g = S * 9, TAU = Math.PI * 2;
+  const u = Math.min(W, H) / 1080, S = st.size * u, g = S * 9, TAU = Math.PI * 2, ov = 1.5 / k; // ov: 1.5 canvas px overlap hides tile seams
   const rng = mulberry32(st.seed * 9973 + 17);
   const inks = N > 2 ? cols.slice(1) : cols;
   const cellRng = (i, j) => mulberry32(st.seed * 131 + i * 7919 + j * 104729);
@@ -268,7 +268,7 @@ function renderMaterial(canvas, st, view) {
   const eachCell = (fn) => {
     for (let j = Math.floor(vy0 / g); j * g < vy1; j++) for (let i = Math.floor(vx0 / g); i * g < vx1; i++) fn(i * g, j * g, cellRng(i, j), i, j);
   };
-  const clipCell = (x, y) => { ctx.save(); ctx.beginPath(); ctx.rect(x, y, g + 0.6, g + 0.6); ctx.clip(); };
+  const clipCell = (x, y) => { ctx.save(); ctx.beginPath(); ctx.rect(x, y, g + ov, g + ov); ctx.clip(); };
 
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = "none"; ctx.globalAlpha = 1; ctx.shadowColor = "transparent";
   ctx.setTransform(k, 0, 0, k, -ox * k, -oy * k);
@@ -336,7 +336,7 @@ function renderMaterial(canvas, st, view) {
       // Concentric targets, some full and some cut in half at the tile edge.
       eachCell((x, y, r) => {
         const bg = pick(r), a = pick(r, bg), b = pick(r, a);
-        ctx.fillStyle = css(bg); ctx.fillRect(x, y, g + 0.6, g + 0.6);
+        ctx.fillStyle = css(bg); ctx.fillRect(x, y, g + ov, g + ov);
         clipCell(x, y);
         const half = r() < 0.4, side = Math.floor(r() * 4);
         const cx = half ? [x + g / 2, x + g, x + g / 2, x][side] : x + g / 2, cy = half ? [y, y + g / 2, y + g, y + g / 2][side] : y + g / 2;
@@ -366,10 +366,10 @@ function renderMaterial(canvas, st, view) {
       // Quilt of half-square triangles, with the odd button on top.
       eachCell((x, y, r) => {
         const a = pick(r), b = pick(r, a);
-        ctx.fillStyle = css(a); ctx.fillRect(x, y, g + 0.6, g + 0.6);
+        ctx.fillStyle = css(a); ctx.fillRect(x, y, g + ov, g + ov);
         ctx.beginPath();
-        if (r() < 0.5) { ctx.moveTo(x, y); ctx.lineTo(x + g + 0.6, y); ctx.lineTo(x, y + g + 0.6); }
-        else { ctx.moveTo(x + g + 0.6, y); ctx.lineTo(x + g + 0.6, y + g + 0.6); ctx.lineTo(x, y); }
+        if (r() < 0.5) { ctx.moveTo(x, y); ctx.lineTo(x + g + ov, y); ctx.lineTo(x, y + g + ov); }
+        else { ctx.moveTo(x + g + ov, y); ctx.lineTo(x + g + ov, y + g + ov); ctx.lineTo(x, y); }
         ctx.closePath(); ctx.fillStyle = css(b); ctx.fill();
         if (r() < 0.25) { ctx.beginPath(); ctx.arc(x + g / 2, y + g / 2, g * 0.15, 0, TAU); ctx.fillStyle = css(pick(r, b)); ctx.fill(); }
       });
@@ -379,7 +379,7 @@ function renderMaterial(canvas, st, view) {
       // Quarter-circle fans growing from a corner of each tile.
       eachCell((x, y, r) => {
         const bg = pick(r), c1 = pick(r, bg), c2 = pick(r, c1);
-        ctx.fillStyle = css(bg); ctx.fillRect(x, y, g + 0.6, g + 0.6);
+        ctx.fillStyle = css(bg); ctx.fillRect(x, y, g + ov, g + ov);
         clipCell(x, y);
         const corner = Math.floor(r() * 4), cx = corner % 2 ? x + g : x, cy = corner > 1 ? y + g : y;
         for (let q = 0; q < 4; q++) {
@@ -393,7 +393,7 @@ function renderMaterial(canvas, st, view) {
     default: { // bauhaus: each tile gets a background and one geometric motif
       eachCell((x, y, r) => {
         const bg = pick(r), fg = pick(r, bg), m = Math.floor(r() * 6), rot = Math.floor(r() * 4);
-        ctx.fillStyle = css(bg); ctx.fillRect(x, y, g + 0.6, g + 0.6);
+        ctx.fillStyle = css(bg); ctx.fillRect(x, y, g + ov, g + ov);
         ctx.save(); ctx.translate(x + g / 2, y + g / 2); ctx.rotate(rot * Math.PI / 2); ctx.translate(-g / 2, -g / 2);
         ctx.beginPath(); ctx.fillStyle = css(fg);
         if (m === 0) { ctx.moveTo(0, 0); ctx.arc(0, 0, g, 0, Math.PI / 2); }
