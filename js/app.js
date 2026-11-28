@@ -4,13 +4,14 @@
 
   // Everything that defines a design (shared by favourites and links).
   const DESIGN_KEYS = ["tiles", "style", "theme", "base", "bottomAuto", "bottom", "dotAuto", "dot", "pattern", "shape", "abstract",
-    "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft", "relief", "menubar", "menuPx", "tilesCut"];
+    "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft", "relief", "menubar", "menuPx", "tilesCut", "topoWidth", "topoLines", "topoShade", "topoLabels"];
 
   // ---------- state ----------
   let state = Object.assign({
     preset: "auto", rotated: false, cw: 1320, ch: 2868, view: "full", tab: "design", mock: false,
     style: "pattern", shape: "bauhaus", abstract: "liquido", gradient: "malla",
     palette: "costa", lastPalette: "costa", layers: 10, seed: 7, custom: DEFAULT_CUSTOM.slice(), menubar: false,
+    topoWidth: 40, topoLines: 50, topoShade: 70, topoLabels: true,
   }, ORIGINAL);
   try {
     const saved = JSON.parse(localStorage.getItem("tapiz-state") || localStorage.getItem("perforado-state") || "null");
@@ -34,6 +35,8 @@
     state.layers = Math.max(3, Math.min(10, +state.layers || 6));
     state.relief = Math.max(0, Math.min(100, +state.relief || 0));
     state.menubar = !!state.menubar;
+    for (const [k, d] of [["topoWidth", 40], ["topoLines", 50], ["topoShade", 70]]) state[k] = Number.isFinite(+state[k]) ? Math.max(0, Math.min(100, +state[k])) : d;
+    state.topoLabels = state.topoLabels !== false;
     state.menuPx = Math.max(0, Math.min(400, Math.round(+state.menuPx || 0)));
   }
 
@@ -271,7 +274,7 @@
     }));
     PATTERNS.forEach(([id, name]) => tile($("patterns"), "pat", "pattern", id, name, 168, 168, () => { state.pattern = id; syncInputs(); draw(false); }));
     SHAPES.forEach(([id, name]) => tile($("grid-material"), "pat", "shape", id, name, 168, 168, () => { state.shape = id; syncScale(); draw(false); drawStyleCards(); }));
-    ABSTRACTS.forEach(([id, name]) => tile($("grid-abstract"), "pat", "abstract", id, name, 168, 168, () => { state.abstract = id; draw(false); drawStyleCards(); }));
+    ABSTRACTS.forEach(([id, name]) => tile($("grid-abstract"), "pat", "abstract", id, name, 168, 168, () => { state.abstract = id; syncInputs(); draw(false); drawStyleCards(); }));
     GRADIENTS.forEach(([id, name]) => tile($("grid-gradient"), "pat", "gradient", id, name, 168, 168, () => { state.gradient = id; draw(false); drawStyleCards(); }));
 
     const sw = $("swatches");
@@ -320,6 +323,7 @@
   const sliders = {
     size: (v) => `${(+v).toFixed(1)} px`, dotSize: (v) => `${v}%`, contrast: (v) => `${v}%`, grad: (v) => `${v}%`,
     layers: (v) => `${v}`, grain: (v) => `${v}%`, soft: (v) => (+v === 0 ? t("sharp") : `${v}%`), relief: (v) => (+v === 0 ? t("flat") : `${v}%`),
+    topoWidth: (v) => `${v}%`, topoLines: (v) => `${v}%`, topoShade: (v) => (+v === 0 ? t("plain") : `${v}%`),
   };
 
   function syncInputs() {
@@ -327,10 +331,11 @@
     const mat = state.style !== "pattern";
     // Tabs + per-style sections.
     document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === state.tab)));
-    document.querySelectorAll("#panel [data-tab], #panel [data-only]").forEach((el) => {
+    document.querySelectorAll("#panel [data-tab], #panel [data-only], #panel [data-design]").forEach((el) => {
       const okTab = !el.dataset.tab || el.dataset.tab === state.tab;
       const okStyle = !el.dataset.only || el.dataset.only.split(" ").includes(state.style);
-      el.hidden = !(okTab && okStyle);
+      const okDesign = !el.dataset.design || el.dataset.design === currentDesign();
+      el.hidden = !(okTab && okStyle && okDesign);
     });
     $("colorGroup").hidden = state.tab !== "color" || (mat && state.palette !== "mono");
     $("customGroup").hidden = state.tab !== "color" || !mat || state.palette !== "custom";
@@ -367,6 +372,7 @@
     const el = $("size"), d = dims();
     $("menubarRow").hidden = state.tab !== "adjust" || !isGrid() || d.w <= d.h;
     $("menubar").checked = state.menubar;
+    $("topoLabels").checked = state.topoLabels;
     $("menubarPx").hidden = !state.menubar;
     $("menubarPx").placeholder = String(autoMenuPx());
     if (document.activeElement !== $("menubarPx")) $("menubarPx").value = state.menuPx > 0 ? state.menuPx : "";
@@ -400,6 +406,7 @@
       syncInputs(); draw(false);
     });
     document.querySelectorAll('input[name="view"]').forEach((r) => r.addEventListener("change", (e) => { state.view = e.target.value; draw(false); }));
+    $("topoLabels").addEventListener("change", (e) => { state.topoLabels = e.target.checked; draw(false); });
     $("menubar").addEventListener("change", (e) => { state.menubar = e.target.checked; syncScale(); draw(false); });
     $("menubarPx").addEventListener("input", (e) => {
       const v = parseInt(e.target.value, 10);

@@ -307,15 +307,16 @@ function renderArt(canvas, st, view) {
       // lines of constant pixel width, every fifth (index) contour in an accent colour, and a few
       // elevation labels set along index contours.
       const f1 = makeFbm(rng, 4), fw = makeFbm(rng, 2), lut = makeLut(cols), sc = 1 / (S * 120);
-      const LV = 20, e = 0.0015, IDX = 5;
+      const LV = 8 + 0.34 * (st.topoLines ?? 50), e = 0.0015, IDX = 5; // contour levels per unit of height
+      const wm = 0.35 + 0.033 * (st.topoWidth ?? 40), shade = (st.topoShade ?? 70) / 100;
       const height = (x, y) => { const q = fw(x * 0.55, y * 0.55); return f1(x + 0.9 * q + 2.3, y - 0.7 * q + 3.7); };
       const accent = dark ? cols[N - 1] : cols[Math.min(N - 1, Math.floor(N / 2))];
       // Background: deep base colour, glowing towards mid-palette on the high ground.
       const bgT = (h, light) => { const v = clamp01((h + 0.35) / 0.95); const g = v * v * (3 - 2 * v);
-        return clamp01(0.02 + 0.46 * g + 0.05 * light); };
+        return clamp01(0.02 + shade * (0.46 * g + 0.05 * light) + (1 - shade) * 0.12); };
       // Light theme: the same map printed on paper — a pale wash of the terrain, darker lines.
       const paper = (c) => { if (!dark) { c[0] += (255 - c[0]) * 0.8; c[1] += (255 - c[1]) * 0.8; c[2] += (255 - c[2]) * 0.8; } return c; };
-      const lw = Math.max(0.5, 0.8 * u * k), lwi = Math.max(0.7, 1.3 * u * k); // line widths in canvas px
+      const lw = Math.max(0.5, 0.8 * wm * u * k), lwi = Math.max(0.7, 1.3 * wm * u * k); // line widths in canvas px
       const la = rng() * Math.PI * 2, lx = Math.cos(la), ly = Math.sin(la);
       const bg = [0, 0, 0], lc = [0, 0, 0];
       pixels(ctx, canvas, view, (X, Y, out) => {
@@ -340,7 +341,7 @@ function renderArt(canvas, st, view) {
       const fs = 13 * u, placed = [], minD = Math.min(W, H) * 0.28, lrng = mulberry32(st.seed * 31 + 5);
       ctx.font = `500 ${fs}px "JetBrains Mono", ui-monospace, monospace`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
-      for (let tries = 0; tries < 60 && placed.length < 3; tries++) {
+      for (let tries = 0; st.topoLabels !== false && tries < 60 && placed.length < 3; tries++) {
         let X = W * (0.1 + 0.8 * lrng()), Y = H * (0.1 + 0.8 * lrng()), ok = false, f = 0, gx = 0, gy = 0;
         for (let it = 0; it < 6; it++) {
           const x = X * sc, y = Y * sc, h = height(x, y);

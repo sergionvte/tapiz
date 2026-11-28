@@ -21,6 +21,7 @@ const STR = {
   tiles: [(a, cut) => `${a} baldosas${cut ? " · bordes cortados" : ""}`, (a, cut) => `${a} tiles${cut ? " · cropped edges" : ""}`],
   sharp: ["nítido", "sharp"],
   flat: ["plano", "flat"],
+  plain: ["liso", "plain"],
   variation: [(n) => `Variación n.º ${n}`, (n) => `Variation #${n}`],
   other: ["Otro", "Another"],
   vary: ["Variar", "Vary"],
@@ -99,7 +100,8 @@ const PAGE_EN = {
   "Añadir color": "Add colour", "Quitar color": "Remove colour", "Copiar paleta anterior": "Copy previous palette",
   "Color base": "Base colour", "Color inferior": "Bottom colour", "Color del patrón": "Pattern colour", "Automático": "Auto",
   "Escala": "Scale", "Dejar sitio a la barra de menús": "Leave room for the menu bar", "Grosor del patrón": "Pattern weight",
-  "Contraste": "Contrast", "Colores": "Colours", "Grano": "Grain", "Relieve": "Relief", "Desenfoque": "Blur",
+  "Contraste": "Contrast", "Grosor de línea": "Line weight", "Cantidad de curvas": "Number of contours",
+  "Relieve del fondo": "Background shading", "Mostrar cotas": "Show elevation labels", "Colores": "Colours", "Grano": "Grain", "Relieve": "Relief", "Desenfoque": "Blur",
   "Girar orientación": "Rotate orientation", "Guardar este diseño": "Save this design", "Copiar enlace": "Copy link",
   "Guarda diseños para volver a ellos más tarde. Se quedan en este navegador.":
     "Save designs to come back to them later. They stay in this browser.",
