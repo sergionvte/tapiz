@@ -304,8 +304,7 @@ function renderArt(canvas, st, view) {
 
     case "topografia": {
       // Topographic map: a warped noise terrain with a soft glow on the high ground, thin contour
-      // lines of constant pixel width, every fifth (index) contour in an accent colour, and a few
-      // elevation labels set along index contours.
+      // lines of constant pixel width, and every fifth (index) contour in an accent colour.
       const f1 = makeFbm(rng, 4), fw = makeFbm(rng, 2), lut = makeLut(cols), sc = 1 / (S * 120);
       const LV = 8 + 0.34 * (st.topoLines ?? 50), e = 0.0015, IDX = 5; // contour levels per unit of height
       const wm = 0.35 + 0.033 * (st.topoWidth ?? 40), shade = (st.topoShade ?? 70) / 100;
@@ -336,36 +335,6 @@ function renderArt(canvas, st, view) {
           out[0] = bg[0] + (lc[0] - bg[0]) * cov; out[1] = bg[1] + (lc[1] - bg[1]) * cov; out[2] = bg[2] + (lc[2] - bg[2]) * cov;
         } else { out[0] = bg[0]; out[1] = bg[1]; out[2] = bg[2]; }
       });
-      // Elevation labels: walk random points onto the nearest index contour (Newton steps).
-      toWall();
-      const fs = 13 * u, placed = [], minD = Math.min(W, H) * 0.28, lrng = mulberry32(st.seed * 31 + 5);
-      ctx.font = `500 ${fs}px "JetBrains Mono", ui-monospace, monospace`;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
-      for (let tries = 0; st.topoLabels !== false && tries < 60 && placed.length < 3; tries++) {
-        let X = W * (0.1 + 0.8 * lrng()), Y = H * (0.1 + 0.8 * lrng()), ok = false, f = 0, gx = 0, gy = 0;
-        for (let it = 0; it < 6; it++) {
-          const x = X * sc, y = Y * sc, h = height(x, y);
-          gx = (height(x + e, y) - h) / e * LV * sc; gy = (height(x, y + e) - h) / e * LV * sc; // per wallpaper px
-          f = (h + 1) * LV;
-          const target = Math.round(f / IDX) * IDX, g2 = gx * gx + gy * gy;
-          if (g2 < 1e-12) break;
-          X -= (f - target) * gx / g2; Y -= (f - target) * gy / g2;
-          if (Math.abs(f - target) < 0.02) { ok = true; break; }
-        }
-        const spacing = 1 / Math.hypot(gx, gy); // distance between contours here
-        if (!ok || spacing < fs * 1.6 || X < fs * 3 || X > W - fs * 3 || Y < fs * 3 || Y > H - fs * 3) continue;
-        if (placed.some(([a, b]) => Math.hypot(a - X, b - Y) < minD)) continue;
-        placed.push([X, Y]);
-        let ang = Math.atan2(gy, gx) + Math.PI / 2;
-        if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI;
-        const label = String(Math.round(f / IDX) * 50);
-        const x = X * sc, y = Y * sc, h = height(x, y);
-        lut(bgT(h, 0), bg); paper(bg);
-        ctx.save(); ctx.translate(X, Y); ctx.rotate(ang);
-        ctx.lineWidth = fs * 0.9; ctx.strokeStyle = css(bg); ctx.strokeText(label, 0, 0); // gap in the line
-        ctx.fillStyle = css(accent, 0.9); ctx.fillText(label, 0, 0);
-        ctx.restore();
-      }
       break;
     }
 
