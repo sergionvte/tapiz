@@ -174,7 +174,7 @@ function renderArt(canvas, st, view) {
     // ---------------- abstract ----------------
     case "liquido": {
       // Marbled ink from nested domain warping.
-      const f = makeFbm(rng, 3), lut = makeLut(cols), sc = 1 / (S * 115), w = 2.1;
+      const f = makeFbm(rng, 3), lut = makeLut(cols), sc = 1 / (S * 115), fl = st.fluid ?? 50, w = fl <= 50 ? 0.7 + 0.028 * fl : 2.1 + 0.02 * (fl - 50); // warp: calm 0.7 → 2.1 → swirling 3.1
       pixels(ctx, canvas, view, (X, Y, out) => {
         const x = X * sc, y = Y * sc;
         const qx = f(x, y), qy = f(x + 5.2, y + 1.3);

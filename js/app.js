@@ -4,14 +4,14 @@
 
   // Everything that defines a design (shared by favourites and links).
   const DESIGN_KEYS = ["tiles", "style", "theme", "base", "bottomAuto", "bottom", "dotAuto", "dot", "pattern", "shape", "abstract",
-    "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft", "relief", "menubar", "menuPx", "tilesCut", "topoWidth", "topoLines", "topoShade", "topoLabels"];
+    "gradient", "palette", "layers", "seed", "custom", "size", "dotSize", "contrast", "grad", "grain", "soft", "relief", "menubar", "menuPx", "tilesCut", "topoWidth", "topoLines", "topoShade", "topoLabels", "fluid"];
 
   // ---------- state ----------
   let state = Object.assign({
     preset: "auto", rotated: false, cw: 1320, ch: 2868, view: "full", tab: "design", mock: false,
     style: "pattern", shape: "bauhaus", abstract: "liquido", gradient: "malla",
     palette: "costa", lastPalette: "costa", layers: 10, seed: 7, custom: DEFAULT_CUSTOM.slice(), menubar: false,
-    topoWidth: 40, topoLines: 50, topoShade: 70, topoLabels: true,
+    topoWidth: 40, topoLines: 50, topoShade: 70, topoLabels: true, fluid: 50,
   }, ORIGINAL);
   try {
     const saved = JSON.parse(localStorage.getItem("tapiz-state") || localStorage.getItem("perforado-state") || "null");
@@ -35,7 +35,7 @@
     state.layers = Math.max(3, Math.min(10, +state.layers || 6));
     state.relief = Math.max(0, Math.min(100, +state.relief || 0));
     state.menubar = !!state.menubar;
-    for (const [k, d] of [["topoWidth", 40], ["topoLines", 50], ["topoShade", 70]]) state[k] = Number.isFinite(+state[k]) ? Math.max(0, Math.min(100, +state[k])) : d;
+    for (const [k, d] of [["topoWidth", 40], ["topoLines", 50], ["topoShade", 70], ["fluid", 50]]) state[k] = Number.isFinite(+state[k]) ? Math.max(0, Math.min(100, +state[k])) : d;
     state.topoLabels = state.topoLabels !== false;
     state.menuPx = Math.max(0, Math.min(400, Math.round(+state.menuPx || 0)));
   }
@@ -323,7 +323,7 @@
   const sliders = {
     size: (v) => `${(+v).toFixed(1)} px`, dotSize: (v) => `${v}%`, contrast: (v) => `${v}%`, grad: (v) => `${v}%`,
     layers: (v) => `${v}`, grain: (v) => `${v}%`, soft: (v) => (+v === 0 ? t("sharp") : `${v}%`), relief: (v) => (+v === 0 ? t("flat") : `${v}%`),
-    topoWidth: (v) => `${v}%`, topoLines: (v) => `${v}%`, topoShade: (v) => (+v === 0 ? t("plain") : `${v}%`),
+    fluid: (v) => `${v}%`, topoWidth: (v) => `${v}%`, topoLines: (v) => `${v}%`, topoShade: (v) => (+v === 0 ? t("plain") : `${v}%`),
   };
 
   function syncInputs() {
