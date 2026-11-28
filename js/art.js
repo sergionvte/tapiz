@@ -302,6 +302,72 @@ function renderArt(canvas, st, view) {
       break;
     }
 
+    case "topografia": {
+      // Topographic map: a warped noise terrain with a soft glow on the high ground, thin contour
+      // lines of constant pixel width, every fifth (index) contour in an accent colour, and a few
+      // elevation labels set along index contours.
+      const f1 = makeFbm(rng, 4), fw = makeFbm(rng, 2), lut = makeLut(cols), sc = 1 / (S * 120);
+      const LV = 20, e = 0.0015, IDX = 5;
+      const height = (x, y) => { const q = fw(x * 0.55, y * 0.55); return f1(x + 0.9 * q + 2.3, y - 0.7 * q + 3.7); };
+      const accent = dark ? cols[N - 1] : cols[Math.min(N - 1, Math.floor(N / 2))];
+      // Background: deep base colour, glowing towards mid-palette on the high ground.
+      const bgT = (h, light) => { const v = clamp01((h + 0.35) / 0.95); const g = v * v * (3 - 2 * v);
+        return clamp01(0.02 + 0.46 * g + 0.05 * light); };
+      // Light theme: the same map printed on paper — a pale wash of the terrain, darker lines.
+      const paper = (c) => { if (!dark) { c[0] += (255 - c[0]) * 0.8; c[1] += (255 - c[1]) * 0.8; c[2] += (255 - c[2]) * 0.8; } return c; };
+      const lw = Math.max(0.5, 0.8 * u * k), lwi = Math.max(0.7, 1.3 * u * k); // line widths in canvas px
+      const la = rng() * Math.PI * 2, lx = Math.cos(la), ly = Math.sin(la);
+      const bg = [0, 0, 0], lc = [0, 0, 0];
+      pixels(ctx, canvas, view, (X, Y, out) => {
+        const x = X * sc, y = Y * sc, h = height(x, y);
+        const gx = (height(x + e, y) - h) / e, gy = (height(x, y + e) - h) / e;
+        const light = Math.max(-1, Math.min(1, (gx * lx + gy * ly) * 0.25));
+        const t0 = bgT(h, light);
+        paper(lut(t0, bg) || bg);
+        // Distance to the nearest contour, in canvas pixels (level spacing / gradient).
+        const f = (h + 1) * LV, lvl = Math.round(f), g = LV * Math.hypot(gx, gy) * sc / k;
+        const dpx = Math.abs(f - lvl) / Math.max(g, 1e-9);
+        const index = lvl % IDX === 0, half = (index ? lwi : lw) / 2;
+        const cov = clamp01(half + 0.5 - dpx) * (index ? 0.78 : 0.7);
+        if (cov > 0) {
+          if (index) { lc[0] = accent[0]; lc[1] = accent[1]; lc[2] = accent[2]; }
+          else if (dark) lut(clamp01(t0 + 0.42), lc); else lut(clamp01(t0 * 0.5), lc);
+          out[0] = bg[0] + (lc[0] - bg[0]) * cov; out[1] = bg[1] + (lc[1] - bg[1]) * cov; out[2] = bg[2] + (lc[2] - bg[2]) * cov;
+        } else { out[0] = bg[0]; out[1] = bg[1]; out[2] = bg[2]; }
+      });
+      // Elevation labels: walk random points onto the nearest index contour (Newton steps).
+      toWall();
+      const fs = 13 * u, placed = [], minD = Math.min(W, H) * 0.28, lrng = mulberry32(st.seed * 31 + 5);
+      ctx.font = `500 ${fs}px "JetBrains Mono", ui-monospace, monospace`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+      for (let tries = 0; tries < 60 && placed.length < 3; tries++) {
+        let X = W * (0.1 + 0.8 * lrng()), Y = H * (0.1 + 0.8 * lrng()), ok = false, f = 0, gx = 0, gy = 0;
+        for (let it = 0; it < 6; it++) {
+          const x = X * sc, y = Y * sc, h = height(x, y);
+          gx = (height(x + e, y) - h) / e * LV * sc; gy = (height(x, y + e) - h) / e * LV * sc; // per wallpaper px
+          f = (h + 1) * LV;
+          const target = Math.round(f / IDX) * IDX, g2 = gx * gx + gy * gy;
+          if (g2 < 1e-12) break;
+          X -= (f - target) * gx / g2; Y -= (f - target) * gy / g2;
+          if (Math.abs(f - target) < 0.02) { ok = true; break; }
+        }
+        const spacing = 1 / Math.hypot(gx, gy); // distance between contours here
+        if (!ok || spacing < fs * 1.6 || X < fs * 3 || X > W - fs * 3 || Y < fs * 3 || Y > H - fs * 3) continue;
+        if (placed.some(([a, b]) => Math.hypot(a - X, b - Y) < minD)) continue;
+        placed.push([X, Y]);
+        let ang = Math.atan2(gy, gx) + Math.PI / 2;
+        if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI;
+        const label = String(Math.round(f / IDX) * 50);
+        const x = X * sc, y = Y * sc, h = height(x, y);
+        lut(bgT(h, 0), bg); paper(bg);
+        ctx.save(); ctx.translate(X, Y); ctx.rotate(ang);
+        ctx.lineWidth = fs * 0.9; ctx.strokeStyle = css(bg); ctx.strokeText(label, 0, 0); // gap in the line
+        ctx.fillStyle = css(accent, 0.9); ctx.fillText(label, 0, 0);
+        ctx.restore();
+      }
+      break;
+    }
+
     default: pixels(ctx, canvas, view, makeMesh(rng, cols, W, H, S));
   }
   ctx.setTransform(1, 0, 0, 1, 0, 0);

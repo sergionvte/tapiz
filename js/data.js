@@ -81,7 +81,7 @@ const PALETTES = [
 const STYLES = [["pattern", "Patrón"], ["material", "Material"], ["abstract", "Abstracto"], ["gradient", "Degradado"]];
 const ABSTRACTS = [
   ["liquido", "Líquido"], ["papel", "Papel"], ["trazos", "Trazos"],
-  ["vitral", "Vitral"], ["memphis", "Memphis"], ["pulsar", "Pulsar"],
+  ["vitral", "Vitral"], ["memphis", "Memphis"], ["pulsar", "Pulsar"], ["topografia", "Topográfico"],
 ];
 const GRADIENTS = [
   ["malla", "Malla"], ["aurora", "Aurora"], ["orbes", "Orbes"],

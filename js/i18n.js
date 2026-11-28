@@ -63,7 +63,7 @@ const NAMES_EN = {
   bauhaus: "Bauhaus", pastillas: "Pills", bloques: "Blocks", truchet: "Truchet", dianas: "Targets", tejido: "Weave",
   colcha: "Quilt", abanicos: "Fans",
   // abstract & gradients
-  liquido: "Liquid", papel: "Paper", trazos: "Strokes", vitral: "Stained glass", memphis: "Memphis", pulsar: "Pulsar",
+  liquido: "Liquid", papel: "Paper", trazos: "Strokes", vitral: "Stained glass", memphis: "Memphis", pulsar: "Pulsar", topografia: "Topographic",
   malla: "Mesh", aurora: "Aurora", orbes: "Orbs", seda: "Silk", horizonte: "Horizon", lineal: "Linear",
   // palettes
   costa: "Coast", atardecer: "Sunset", retro: "Retro", oceano: "Ocean", bosque: "Forest", lavanda: "Lavender", neon: "Neon",
